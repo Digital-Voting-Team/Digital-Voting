@@ -10,6 +10,20 @@ import (
 	"math/big"
 )
 
+var (
+	order     *big.Int
+	basePoint *edwards25519.Point
+)
+
+func init() {
+	//2^252 + 27742317777372353535851937790883648493
+	order = big.NewInt(0)
+	order.SetString("7237005577332262213973186563042994240857116359379907606001950938285454250989", 10)
+
+	basePoint = edwards25519.NewGeneratorPoint()
+	perhapsNormalize(basePoint)
+}
+
 type RingSignature struct {
 	KeyImage *edwards25519.Point
 	CList    []*big.Int
@@ -26,10 +40,6 @@ func SignMessage(message string, privateKey ed25519.PrivateKey, publicKey ed2551
 	cList := make([]*big.Int, numberOfPKeys)
 	rList := make([]*big.Int, numberOfPKeys)
 
-	//2^252 + 27742317777372353535851937790883648493
-	order := big.NewInt(0)
-	order.SetString("7237005577332262213973186563042994240857116359379907606001950938285454250989", 10)
-
 	for i := 0; i < numberOfPKeys; i++ {
 		cList[i], _ = rand.Int(rand.Reader, order)
 		rList[i], _ = rand.Int(rand.Reader, order)
@@ -37,52 +47,54 @@ func SignMessage(message string, privateKey ed25519.PrivateKey, publicKey ed2551
 	var lArray []*edwards25519.Point
 	var rArray []*edwards25519.Point
 
-	basePoint := edwards25519.NewGeneratorPoint()
+	b := make([]byte, 32)
+
+	pKey := big.NewInt(0)
+	pKey.SetBytes(privateKey)
+
+	keyImage := getKeyImage(publicKey, pKey)
 
 	for i := 0; i < numberOfPKeys; i++ {
-		b := rList[i].Bytes()
-		appendLength := 32 - len(b)
-		b = append(make([]byte, appendLength), b...)
+		rList[i].FillBytes(b)
 		reverseBytes(b)
+
 		qI, err := edwards25519.NewScalar().SetCanonicalBytes(b)
 		if err != nil {
 			log.Println(err)
-			log.Println(b)
-			log.Println(len(b))
 		}
 
 		rG := edwards25519.NewGeneratorPoint().ScalarMult(qI, basePoint)
+		perhapsNormalize(rG)
 		point, err := edwards25519.NewGeneratorPoint().SetBytes(publicKeys[i])
+		perhapsNormalize(point)
 		if err != nil {
 			log.Println(err)
 		}
 		rH := edwards25519.NewGeneratorPoint().ScalarMult(qI, point)
-
+		perhapsNormalize(rH)
 		if i == s {
 			lArray = append(lArray, rG)
 			rArray = append(rArray, rH)
 			continue
 		}
 
-		b = cList[i].Bytes()
-		appendLength = 32 - len(b)
-		b = append(make([]byte, appendLength), b...)
+		b = cList[i].FillBytes(b)
 		reverseBytes(b)
+
 		wI, err := edwards25519.NewScalar().SetCanonicalBytes(b)
 		if err != nil {
 			log.Println(err)
-			log.Println(b)
-			log.Println(len(b))
 		}
 
 		cP := edwards25519.NewGeneratorPoint().ScalarMult(wI, point)
+		perhapsNormalize(cP)
 		rGcP := edwards25519.NewGeneratorPoint().Add(rG, cP)
+		perhapsNormalize(rGcP)
 
-		//privateKeyScalar := edwards25519.NewScalar().SetCanonicalBytes(privateKey)
-		//keyImage := edwards25519.NewGeneratorPoint().ScalarMult()
-
-		cI := edwards25519.NewGeneratorPoint().ScalarMult(wI, point)
+		cI := edwards25519.NewGeneratorPoint().ScalarMult(wI, keyImage)
+		perhapsNormalize(cI)
 		rHcI := edwards25519.NewGeneratorPoint().Add(rH, cI)
+		perhapsNormalize(rHcI)
 
 		lArray = append(lArray, rGcP)
 		rArray = append(rArray, rHcI)
@@ -94,15 +106,13 @@ func SignMessage(message string, privateKey ed25519.PrivateKey, publicKey ed2551
 
 	sum := big.NewInt(0)
 	for i := 0; i < numberOfPKeys; i++ {
-		sum = big.NewInt(0).Add(sum, cList[i])
+		if i != s {
+			sum.Add(sum, cList[i])
+		}
 	}
 	cList[s] = big.NewInt(0).Mod(big.NewInt(0).Sub(c, sum), order)
 
-	pKey := big.NewInt(0)
-	pKey.SetBytes(privateKey)
 	rList[s] = big.NewInt(0).Mod(big.NewInt(0).Sub(rList[s], big.NewInt(0).Mul(cList[s], pKey)), order)
-
-	keyImage, _ := edwards25519.NewGeneratorPoint().SetBytes(publicKey)
 
 	return &RingSignature{
 		KeyImage: keyImage,
@@ -111,53 +121,74 @@ func SignMessage(message string, privateKey ed25519.PrivateKey, publicKey ed2551
 	}, nil
 }
 
+func getKeyImage(publicKey ed25519.PublicKey, privateKey *big.Int) *edwards25519.Point {
+	bp := make([]byte, 64)
+
+	keyImage, _ := edwards25519.NewGeneratorPoint().SetBytes(publicKey)
+
+	privateKey.FillBytes(bp)
+	reverseBytes(bp)
+
+	ss, err := edwards25519.NewScalar().SetUniformBytes(bp)
+	if err != nil {
+		log.Println(err)
+	}
+
+	keyImage.ScalarBaseMult(ss)
+	perhapsNormalize(keyImage)
+	return keyImage
+}
+
 func (sig *RingSignature) VerifySignature(message string, publicKeys []ed25519.PublicKey) bool {
 	numberOfPKeys := len(publicKeys)
 	var newLArray []*edwards25519.Point
 	var newRArray []*edwards25519.Point
 
-	order := big.NewInt(0)
-	order.SetString("7237005577332262213973186563042994240857116359379907606001950938285454250989", 10)
-
-	basePoint := edwards25519.NewGeneratorPoint()
 	cExpected := big.NewInt(0)
 
+	b := make([]byte, 32)
+
 	for i := 0; i < numberOfPKeys; i++ {
-		b := sig.RList[i].Bytes()
-		appendLength := 32 - len(b)
-		b = append(make([]byte, appendLength), b...)
+		sig.RList[i].FillBytes(b)
 		reverseBytes(b)
+
 		rI, err := edwards25519.NewScalar().SetCanonicalBytes(b)
 		if err != nil {
 			log.Println(err)
 		}
 		rG := edwards25519.NewGeneratorPoint().ScalarMult(rI, basePoint)
+		perhapsNormalize(rG)
 
 		point, err := edwards25519.NewGeneratorPoint().SetBytes(publicKeys[i])
+		perhapsNormalize(point)
 		if err != nil {
 			log.Println(err)
 		}
 		rH := edwards25519.NewGeneratorPoint().ScalarMult(rI, point)
+		perhapsNormalize(rH)
 
-		b = sig.CList[i].Bytes()
-		appendLength = 32 - len(b)
-		b = append(make([]byte, appendLength), b...)
+		sig.CList[i].FillBytes(b)
 		reverseBytes(b)
+
 		cI, err := edwards25519.NewScalar().SetCanonicalBytes(b)
 		if err != nil {
 			log.Println(err)
 		}
 
 		cP := edwards25519.NewGeneratorPoint().ScalarMult(cI, point)
-		c_I := edwards25519.NewGeneratorPoint().ScalarMult(cI, point)
+		perhapsNormalize(cP)
+		c_I := edwards25519.NewGeneratorPoint().ScalarMult(cI, sig.KeyImage)
+		perhapsNormalize(c_I)
 
 		currentLValue := edwards25519.NewGeneratorPoint().Add(rG, cP)
+		perhapsNormalize(currentLValue)
 		currentRValue := edwards25519.NewGeneratorPoint().Add(rH, c_I)
+		perhapsNormalize(currentRValue)
 
 		newLArray = append(newLArray, currentLValue)
 		newRArray = append(newRArray, currentRValue)
 
-		cExpected = big.NewInt(0).Add(cExpected, sig.CList[i])
+		cExpected = big.NewInt(0).Add(cExpected, sig.CList[i]).Mod(cExpected, order)
 	}
 
 	cReal := big.NewInt(0)
@@ -165,7 +196,7 @@ func (sig *RingSignature) VerifySignature(message string, publicKeys []ed25519.P
 	cReal.SetBytes(hash[:])
 	cReal = big.NewInt(0).Mod(cReal, order)
 
-	return cReal == cExpected
+	return cReal.Cmp(cExpected) == 0
 }
 
 func getHash(message string, lArray, rArray []*edwards25519.Point) [32]byte {
@@ -186,4 +217,13 @@ func reverseBytes(bytes []byte) {
 	for i := 0; i < len(bytes)/2; i++ {
 		bytes[i], bytes[len(bytes)-i-1] = bytes[len(bytes)-i-1], bytes[i]
 	}
+}
+
+func perhapsNormalize(point *edwards25519.Point) {
+	//pointBytes := point.BytesMontgomery()
+	//point, err := point.SetBytes(pointBytes)
+	//
+	//if err != nil {
+	//	log.Panicln(err)
+	//}
 }
