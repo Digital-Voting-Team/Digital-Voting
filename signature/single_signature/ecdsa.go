@@ -1,8 +1,10 @@
-package ecc
+package single_signature
 
 import (
 	crypto "crypto/rand"
 	"crypto/sha1"
+	"digital-voting/signature"
+	"digital-voting/signature/utils"
 	"encoding/hex"
 	"log"
 	"math/big"
@@ -11,12 +13,12 @@ import (
 )
 
 type ECDSA struct {
-	GenPoint *Point
-	Curve    *MontgomeryCurve
+	GenPoint *signature.Point
+	Curve    *signature.MontgomeryCurve
 }
 
 func NewECDSA() *ECDSA {
-	curve := NewCurve25519()
+	curve := signature.NewCurve25519()
 	return &ECDSA{
 		GenPoint: curve.G(),
 		Curve:    curve,
@@ -33,10 +35,10 @@ func (ec *ECDSA) Sign(privateKey *big.Int, message string) (*big.Int, *big.Int) 
 	for s.String() == "0" {
 		for r.String() == "0" {
 			// 1. Select a random or pseudorandom integer k, 1 ≤ k ≤ n - 1
-			randK, _ = crypto.Int(crypto.Reader, new(big.Int).Sub(ec.Curve.N, GetInt(1)))
+			randK, _ = crypto.Int(crypto.Reader, new(big.Int).Sub(ec.Curve.N, utils.GetInt(1)))
 
 			// 2. Compute kG = (x1, y1) and convert x1 to an integer x1
-			kG, err := ec.Curve.MulPoint(Clone(randK), ec.GenPoint)
+			kG, err := ec.Curve.MulPoint(utils.Clone(randK), ec.GenPoint)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -51,7 +53,7 @@ func (ec *ECDSA) Sign(privateKey *big.Int, message string) (*big.Int, *big.Int) 
 		// 5. Compute SHA-1(m) and convert this bit string to an integer ec.
 		h := sha1.New()
 		h.Write([]byte(message))
-		e := Hex2int(hex.EncodeToString(h.Sum(nil)))
+		e := utils.Hex2int(hex.EncodeToString(h.Sum(nil)))
 
 		// 6. Compute 5 = k-1(ec + dr) mod n. If s = 0 then go to step 1.
 		// s = invK * (e + privateKey*r) % *ec.Curve.N
@@ -61,17 +63,17 @@ func (ec *ECDSA) Sign(privateKey *big.Int, message string) (*big.Int, *big.Int) 
 	return &r, &s
 }
 
-func (ec *ECDSA) Verify(publicKey Point, message string, r, s *big.Int) bool {
+func (ec *ECDSA) Verify(publicKey signature.Point, message string, r, s *big.Int) bool {
 	// 1. Verify that r and s are integers in the interval [1, n - 1].
-	if !CheckInterval(r, GetInt(1), new(big.Int).Sub(ec.Curve.N, GetInt(1))) ||
-		!CheckInterval(s, GetInt(1), new(big.Int).Sub(ec.Curve.N, GetInt(1))) {
+	if !utils.CheckInterval(r, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) ||
+		!utils.CheckInterval(s, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) {
 		return false
 	}
 
 	// 2. Compute SHA-1(m) and convert this bit string to an integer e
 	h := sha1.New()
 	h.Write([]byte(message))
-	e := Hex2int(hex.EncodeToString(h.Sum(nil)))
+	e := utils.Hex2int(hex.EncodeToString(h.Sum(nil)))
 
 	// 3. Compute w = s^-1 mod n.
 	var w big.Int

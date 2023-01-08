@@ -1,14 +1,16 @@
-package ecc
+package single_signature
 
 import (
+	"digital-voting/signature"
+	"digital-voting/signature/single_signature"
 	"math/big"
 	"testing"
 )
 
 func TestECDSA(t *testing.T) {
-	sign := NewECDSA()
-	pk1, pbk1 := GetKeyPair(NewCurve25519())
-	pk2, pbk2 := GetKeyPair(NewCurve25519())
+	sign := single_signature.NewECDSA()
+	pk1, pbk1 := signature.GetKeyPair(signature.NewCurve25519())
+	pk2, pbk2 := signature.GetKeyPair(signature.NewCurve25519())
 
 	msg := "String ...."
 	msg2 := "String2 ...."
@@ -42,8 +44,8 @@ func TestECDSA(t *testing.T) {
 }
 
 func TestKeyGeneration(t *testing.T) {
-	pk1, pbk1 := GetKeyPair(NewCurve25519())
-	pk2, pbk2 := GetKeyPair(NewCurve25519())
+	pk1, pbk1 := signature.GetKeyPair(signature.NewCurve25519())
+	pk2, pbk2 := signature.GetKeyPair(signature.NewCurve25519())
 
 	if new(big.Int).Sub(pk1, pk2).Sign() == 0 {
 		t.Errorf("%v: %v, keys must be different", pk1, pk2)

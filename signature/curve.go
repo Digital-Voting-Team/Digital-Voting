@@ -1,6 +1,7 @@
-package ecc
+package signature
 
 import (
+	"digital-voting/signature/utils"
 	"errors"
 	"fmt"
 	"log"
@@ -16,6 +17,7 @@ type ICurve interface {
 	MulPoint(d *big.Int, P *Point) (*Point, error)
 	NegPoint(P *Point) (*Point, error)
 	ComputeY(x *big.Int) *big.Int
+	ComputeDeterministicHash(P *Point) *Point
 }
 
 type Point struct {
@@ -62,8 +64,8 @@ func (p *Point) Mul(scalar *big.Int) *Point {
 
 func (p *Point) Copy() *Point {
 	return &Point{
-		X:     Clone(p.X),
-		Y:     Clone(p.Y),
+		X:     utils.Clone(p.X),
+		Y:     utils.Clone(p.Y),
 		Curve: p.Curve,
 	}
 }
@@ -79,7 +81,7 @@ func (c *Curve) String() string {
 }
 
 func (c *Curve) G() *Point {
-	return &Point{X: Clone(c.GX), Y: Clone(c.GY), Curve: c}
+	return &Point{X: utils.Clone(c.GX), Y: utils.Clone(c.GY), Curve: c}
 }
 
 func (c *Curve) INF() *Point {
@@ -145,16 +147,16 @@ func (c *Curve) MulPoint(d *big.Int, P *Point) (*Point, error) {
 
 	var err error
 	res := c.INF()
-	d_ := Clone(d)
+	d_ := utils.Clone(d)
 	isNegScalar := d_.Sign() < 0
 	if isNegScalar {
-		d_.Mul(d_, GetInt(-1))
+		d_.Mul(d_, utils.GetInt(-1))
 	}
 	tmp := P.Copy()
 
 	for d_.Sign() != 0 {
-		toCompare := new(big.Int).And(d_, Hex2int("0x1"))
-		if toCompare.String() == GetInt(1).String() {
+		toCompare := new(big.Int).And(d_, utils.Hex2int("0x1"))
+		if toCompare.String() == utils.GetInt(1).String() {
 			res, err = c.AddPoint(res, tmp)
 			if err != nil {
 				return &Point{}, err
@@ -192,7 +194,14 @@ func (c *Curve) negPoint(P *Point) *Point {
 
 func (c *Curve) ComputeY(x *big.Int) *big.Int {
 	if c.Name == "Curve25519" {
-		return Clone(c.ConvertToMontgomeryCurve().ComputeY(Clone(x)))
+		return utils.Clone(c.ConvertToMontgomeryCurve().ComputeY(utils.Clone(x)))
+	}
+	panic("should not be called")
+}
+
+func (c *Curve) ComputeDeterministicHash(P *Point) *Point {
+	if c.Name == "Curve25519" {
+		return c.ConvertToMontgomeryCurve().ComputeDeterministicHash(P)
 	}
 	panic("should not be called")
 }
@@ -258,8 +267,8 @@ func (mc *MontgomeryCurve) doublePoint(P *Point) *Point {
 		down   big.Int
 		modInv big.Int
 	)
-	up.Mul(P.X, P.X).Mul(&up, GetInt(3)).Add(&up, new(big.Int).Mul(new(big.Int).Mul(mc.A, P.X), GetInt(2))).Add(&up, GetInt(1))
-	down.Mul(GetInt(2), mc.B).Mul(&down, P.Y)
+	up.Mul(P.X, P.X).Mul(&up, utils.GetInt(3)).Add(&up, new(big.Int).Mul(new(big.Int).Mul(mc.A, P.X), utils.GetInt(2))).Add(&up, utils.GetInt(1))
+	down.Mul(utils.GetInt(2), mc.B).Mul(&down, P.Y)
 	modInv.ModInverse(&down, mc.P)
 	s := new(big.Int).Mul(&up, &modInv) // up * modInv
 	// resX := (*mc.B*s*s - *mc.A - 2**P.X) % *mc.P
@@ -268,14 +277,14 @@ func (mc *MontgomeryCurve) doublePoint(P *Point) *Point {
 		resX big.Int
 		resY big.Int
 	)
-	resX.Mul(mc.B, s).Mul(&resX, s).Sub(&resX, mc.A).Sub(&resX, new(big.Int).Mul(GetInt(2), P.X)).Mod(&resX, mc.P)
+	resX.Mul(mc.B, s).Mul(&resX, s).Sub(&resX, mc.A).Sub(&resX, new(big.Int).Mul(utils.GetInt(2), P.X)).Mod(&resX, mc.P)
 	resY.Sub(&resX, P.X).Mul(&resY, s).Add(&resY, P.Y).Mod(&resY, mc.P)
 	return (&Point{&resX, &resY, mc}).Neg()
 }
 
 func (mc *MontgomeryCurve) negPoint(P *Point) *Point {
 	py := new(big.Int).Mod(new(big.Int).Neg(P.Y), mc.P) // -(*P.Y) % *mc.P
-	return &Point{P.X, Clone(py), mc}
+	return &Point{P.X, utils.Clone(py), mc}
 }
 
 func (mc *MontgomeryCurve) ComputeY(x *big.Int) *big.Int {
@@ -292,7 +301,13 @@ func (mc *MontgomeryCurve) ComputeY(x *big.Int) *big.Int {
 	invB.ModInverse(mc.B, mc.P)
 	right.Mul(&right, &invB).Mod(&right, mc.P)
 	y.ModSqrt(&right, mc.P)
-	return Clone(&y)
+	return utils.Clone(&y)
+}
+
+func (mc *MontgomeryCurve) ComputeDeterministicHash(P *Point) *Point {
+	publicKeyInteger := new(big.Int).Set(new(big.Int).Add(P.X, P.Y))
+	publicKeyInteger.Mod(publicKeyInteger, mc.P)
+	return mc.G().Mul(publicKeyInteger)
 }
 
 func NewCurve25519() *MontgomeryCurve {
@@ -300,10 +315,10 @@ func NewCurve25519() *MontgomeryCurve {
 	a.SetInt64(486662)
 	b := new(big.Int)
 	b.SetInt64(1)
-	p := Hex2int("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed")
-	n := Hex2int("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed")
-	gx := Hex2int("0x9")
-	gy := Hex2int("0x20ae19a1b8a086b4e01edd2c7748d14c923d4d7e6d7c61b229e9c5a27eced3d9")
+	p := utils.Hex2int("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed")
+	n := utils.Hex2int("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed")
+	gx := utils.Hex2int("0x9")
+	gy := utils.Hex2int("0x20ae19a1b8a086b4e01edd2c7748d14c923d4d7e6d7c61b229e9c5a27eced3d9")
 	return &MontgomeryCurve{
 		Curve{
 			Name: "Curve25519",

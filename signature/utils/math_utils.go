@@ -1,4 +1,4 @@
-package ecc
+package utils
 
 import (
 	"math/big"

@@ -1,26 +1,25 @@
-package main
+package ring_signature
 
 import (
-	"digital-voting/signature/ring_signature/ecc"
-
 	"crypto/rand"
 	"crypto/sha256"
+	"digital-voting/signature"
 	"fmt"
 	"log"
 	"math/big"
 )
 
 var (
-	curve = ecc.NewCurve25519()
+	curve = signature.NewCurve25519()
 )
 
 type RingSignature struct {
-	KeyImage *ecc.Point
+	KeyImage *signature.Point
 	CList    []*big.Int
 	RList    []*big.Int
 }
 
-func SignMessage(message string, privateKey *big.Int, publicKey *ecc.Point, publicKeys []*ecc.Point, s int) (*RingSignature, error) {
+func SignMessage(message string, privateKey *big.Int, publicKey *signature.Point, publicKeys []*signature.Point, s int) (*RingSignature, error) {
 	numberOfPKeys := len(publicKeys)
 
 	if s < 0 || s >= numberOfPKeys {
@@ -41,54 +40,54 @@ func SignMessage(message string, privateKey *big.Int, publicKey *ecc.Point, publ
 			log.Panicln(err)
 		}
 	}
-	var lArray []*ecc.Point
-	var rArray []*ecc.Point
+	var lArray []*signature.Point
+	var rArray []*signature.Point
 
-	keyImage := getKeyImage(publicKey, privateKey)
+	keyImage := signature.GetKeyImage(curve, publicKey, privateKey)
 
 	for i := 0; i < numberOfPKeys; i++ {
 		qI := new(big.Int).Set(rList[i])
 
-		rG, err := curve.MulPoint(qI, curve.G())
+		qG, err := curve.MulPoint(qI, curve.G())
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		rH, err := curve.MulPoint(qI, publicKeys[i].Copy())
+		qH, err := curve.MulPoint(qI, curve.ComputeDeterministicHash(publicKeys[i].Copy()))
 		if err != nil {
 			log.Panicln(err)
 		}
 
 		if i == s {
-			lArray = append(lArray, rG)
-			rArray = append(rArray, rH)
+			lArray = append(lArray, qG)
+			rArray = append(rArray, qH)
 			continue
 		}
 
 		wI := new(big.Int).Set(cList[i])
 
-		cP, err := curve.MulPoint(wI, publicKeys[i].Copy())
+		wP, err := curve.MulPoint(wI, publicKeys[i].Copy())
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		rGcP, err := curve.AddPoint(rG, cP)
+		qGwP, err := curve.AddPoint(qG, wP)
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		cI, err := curve.MulPoint(wI, keyImage)
+		wIPoint, err := curve.MulPoint(wI, keyImage)
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		rHcI, err := curve.AddPoint(rH, cI)
+		qHwI, err := curve.AddPoint(qH, wIPoint)
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		lArray = append(lArray, rGcP)
-		rArray = append(rArray, rHcI)
+		lArray = append(lArray, qGwP)
+		rArray = append(rArray, qHwI)
 	}
 
 	hash := getHash(message, lArray, rArray)
@@ -113,21 +112,10 @@ func SignMessage(message string, privateKey *big.Int, publicKey *ecc.Point, publ
 	}, nil
 }
 
-func getKeyImage(publicKey *ecc.Point, privateKey *big.Int) *ecc.Point {
-	pKey := new(big.Int).Set(privateKey)
-
-	keyImage, err := curve.MulPoint(pKey, publicKey)
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	return keyImage
-}
-
-func (sig *RingSignature) VerifySignature(message string, publicKeys []*ecc.Point) bool {
+func (sig *RingSignature) VerifySignature(message string, publicKeys []*signature.Point) bool {
 	numberOfPKeys := len(publicKeys)
-	var newLArray []*ecc.Point
-	var newRArray []*ecc.Point
+	var newLArray []*signature.Point
+	var newRArray []*signature.Point
 
 	cExpected := new(big.Int)
 
@@ -139,7 +127,7 @@ func (sig *RingSignature) VerifySignature(message string, publicKeys []*ecc.Poin
 			log.Panicln(err)
 		}
 
-		rH, err := curve.MulPoint(rI, publicKeys[i].Copy())
+		rH, err := curve.MulPoint(rI, curve.ComputeDeterministicHash(publicKeys[i].Copy()))
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -151,7 +139,7 @@ func (sig *RingSignature) VerifySignature(message string, publicKeys []*ecc.Poin
 			log.Panicln(err)
 		}
 
-		c_I, err := curve.MulPoint(cI, sig.KeyImage)
+		cIPoint, err := curve.MulPoint(cI, sig.KeyImage)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -161,7 +149,7 @@ func (sig *RingSignature) VerifySignature(message string, publicKeys []*ecc.Poin
 			log.Panicln(err)
 		}
 
-		currentRValue, err := curve.AddPoint(rH, c_I)
+		currentRValue, err := curve.AddPoint(rH, cIPoint)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -180,7 +168,7 @@ func (sig *RingSignature) VerifySignature(message string, publicKeys []*ecc.Poin
 	return cReal.Cmp(cExpected) == 0
 }
 
-func getHash(message string, lArray, rArray []*ecc.Point) [32]byte {
+func getHash(message string, lArray, rArray []*signature.Point) [32]byte {
 	messageToHash := message
 
 	for i := 0; i < len(lArray); i++ {
