@@ -157,13 +157,11 @@ func (sig *RingSignature) VerifySignature(message string, publicKeys []*signatur
 		newLArray = append(newLArray, currentLValue)
 		newRArray = append(newRArray, currentRValue)
 
-		cExpected = new(big.Int).Add(cExpected, sig.CList[i])
-		cExpected = new(big.Int).Mod(cExpected, curve.N)
+		cExpected = new(big.Int).Mod(new(big.Int).Add(cExpected, sig.CList[i]), curve.N)
 	}
 
 	hash := getHash(message, newLArray, newRArray)
-	cReal := new(big.Int).SetBytes(hash[:])
-	cReal = new(big.Int).Mod(cReal, curve.N)
+	cReal := new(big.Int).Mod(new(big.Int).SetBytes(hash[:]), curve.N)
 
 	return cReal.Cmp(cExpected) == 0
 }
