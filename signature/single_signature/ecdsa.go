@@ -63,7 +63,7 @@ func (ec *ECDSA) Sign(privateKey *big.Int, message string) (*big.Int, *big.Int) 
 	return &r, &s
 }
 
-func (ec *ECDSA) Verify(publicKey signature.Point, message string, r, s *big.Int) bool {
+func (ec *ECDSA) Verify(publicKey *signature.Point, message string, r, s *big.Int) bool {
 	// 1. Verify that r and s are integers in the interval [1, n - 1].
 	if !utils.CheckInterval(r, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) ||
 		!utils.CheckInterval(s, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) {
@@ -92,7 +92,7 @@ func (ec *ECDSA) Verify(publicKey signature.Point, message string, r, s *big.Int
 	if err != nil {
 		log.Fatal(err)
 	}
-	u2G, err := ec.Curve.MulPoint(&u2, &publicKey)
+	u2G, err := ec.Curve.MulPoint(&u2, publicKey)
 	if err != nil {
 		log.Fatal(err)
 	}
