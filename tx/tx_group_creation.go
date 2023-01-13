@@ -1,4 +1,4 @@
-package group_creation
+package tx
 
 import (
 	"fmt"
@@ -13,8 +13,8 @@ type txGroupCreation struct {
 	groupIdentifier   [33]byte
 	groupName         [256]byte
 	membersPublicKeys [][33]byte
-	adminSignature    signature
-	adminPubKey       [33]byte
+	AdminSignature    signature
+	AdminPubKey       [33]byte
 	nonce             uint32
 }
 
