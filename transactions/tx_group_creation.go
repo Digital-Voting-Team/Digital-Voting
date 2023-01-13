@@ -36,6 +36,6 @@ func (tx *txGroupCreation) RemoveGroupMember(publicKey [33]byte) {
 	}
 }
 
-func (tx *txGroupCreation) getStringToSign() string {
+func (tx *txGroupCreation) GetStringToSign() string {
 	return fmt.Sprintf("%d, %v, %v, %v, %d", tx.txType, tx.groupIdentifier, tx.groupName, tx.membersPublicKeys, tx.nonce)
 }
