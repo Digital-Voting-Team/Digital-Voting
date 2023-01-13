@@ -21,6 +21,6 @@ func newTxAccCreation(txType uint8, accountType uint8, newPubKey [33]byte) *txAc
 	return &txAccountCreation{txType: txType, accountType: accountType, newPubKey: newPubKey, nonce: rand.Uint32()}
 }
 
-func (tx *txAccountCreation) getStringToSign() string {
+func (tx *txAccountCreation) GetStringToSign() string {
 	return fmt.Sprintf("%d, %d, %v, %d", tx.txType, tx.accountType, tx.newPubKey, tx.nonce)
 }
