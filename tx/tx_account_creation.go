@@ -12,8 +12,8 @@ type txAccountCreation struct {
 	txType         uint8
 	accountType    uint8
 	newPubKey      [33]byte
-	adminSignature signature
-	adminPubKey    [33]byte
+	AdminSignature signature
+	AdminPubKey    [33]byte
 	nonce          uint32
 }
 
