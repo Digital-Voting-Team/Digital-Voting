@@ -1,8 +1,9 @@
 package keys
 
 import (
-	"crypto/ed25519"
+	"digital-voting/curve"
 	"digital-voting/strkey"
+	"math/big"
 )
 
 // FromAddress represents a keys to which only the address is known. This KP
@@ -38,22 +39,6 @@ func (kp *FromAddress) Hint() (r [4]byte) {
 	return
 }
 
-// Verify checks whether message was signed by kp's keys.
-func (kp *FromAddress) Verify(message []byte, sig []byte) error {
-	if len(sig) != 64 {
-		return ErrInvalidSignature
-	}
-	if !ed25519.Verify(kp.PublicKey()[:], message, sig) {
-		return ErrInvalidSignature
-	}
-	return nil
-}
-
-// Sign method returns error because this KP cannot sign messages.
-func (kp *FromAddress) Sign(_ []byte) ([]byte, error) {
-	return nil, ErrCannotSign
-}
-
 // Equal compares two FromAddress instances.
 func (kp *FromAddress) Equal(a *FromAddress) bool {
 	if kp == nil && a == nil {
@@ -73,4 +58,16 @@ func newFromAddress(address string) (*FromAddress, error) {
 	return &FromAddress{
 		address: address,
 	}, nil
+}
+
+func (kp *FromAddress) GetPrivateKey() *big.Int {
+	return nil
+}
+
+func (kp *FromAddress) GetPublicKey() *curve.Point {
+	return nil
+}
+
+func (kp *FromAddress) GetKeyImage() *curve.Point {
+	return nil
 }

@@ -1,4 +1,4 @@
-package signature
+package curve
 
 import (
 	"digital-voting/signature/utils"

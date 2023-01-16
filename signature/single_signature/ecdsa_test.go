@@ -1,14 +1,30 @@
 package single_signature
 
 import (
-	"digital-voting/signature"
+	"digital-voting/curve"
+	"digital-voting/keys"
+	"log"
 	"math/big"
 	"testing"
+	"time"
 )
 
 func TestKeyGeneration(t *testing.T) {
-	pk1, pbk1 := signature.GetKeyPair(signature.NewCurve25519())
-	pk2, pbk2 := signature.GetKeyPair(signature.NewCurve25519())
+	sign := NewECDSA()
+	keyPair1, err := keys.ParseKeyPair(time.Now().String(), sign.Curve)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	keyPair2, err := keys.ParseKeyPair(time.Now().String(), sign.Curve)
+	if err != nil {
+		log.Panicln(err)
+	}
+	pk1 := keyPair1.GetPrivateKey()
+	pbk1 := keyPair1.GetPublicKey()
+
+	pk2 := keyPair2.GetPrivateKey()
+	pbk2 := keyPair2.GetPublicKey()
 
 	if new(big.Int).Sub(pk1, pk2).Sign() == 0 {
 		t.Errorf("%v: %v, keys must be different", pk1, pk2)
@@ -21,19 +37,31 @@ func TestKeyGeneration(t *testing.T) {
 
 func TestVerify(t *testing.T) {
 	sign := NewECDSA()
-	pk1, pbk1 := signature.GetKeyPair(signature.NewCurve25519())
-	pk2, pbk2 := signature.GetKeyPair(signature.NewCurve25519())
+	keyPair1, err := keys.ParseKeyPair(time.Now().String(), sign.Curve)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	keyPair2, err := keys.ParseKeyPair(time.Now().String(), sign.Curve)
+	if err != nil {
+		log.Panicln(err)
+	}
+	pk1 := keyPair1.GetPrivateKey()
+	pbk1 := keyPair1.GetPublicKey()
+
+	pk2 := keyPair2.GetPrivateKey()
+	pbk2 := keyPair2.GetPublicKey()
 
 	msg := "String ...."
 	msg2 := "String2 ...."
 	r, s := sign.Sign(pk1, msg)
 	r1, s1 := sign.Sign(pk2, msg)
 	type fields struct {
-		GenPoint *signature.Point
-		Curve    *signature.MontgomeryCurve
+		GenPoint *curve.Point
+		Curve    *curve.MontgomeryCurve
 	}
 	type args struct {
-		publicKey *signature.Point
+		publicKey *curve.Point
 		message   string
 		r         *big.Int
 		s         *big.Int

@@ -3,25 +3,26 @@ package ring_signature
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"digital-voting/signature"
+	curve2 "digital-voting/curve"
+	"digital-voting/keys"
 	"fmt"
 	"log"
 	"math/big"
 )
 
 var (
-	curve = signature.NewCurve25519()
+	curve = curve2.NewCurve25519()
 )
 
 // RingSignature
 // https://bytecoin.org/old/whitepaper.pdf
 type RingSignature struct {
-	KeyImage *signature.Point
+	KeyImage *curve2.Point
 	CList    []*big.Int
 	RList    []*big.Int
 }
 
-func SignMessage(message string, privateKey *big.Int, publicKey *signature.Point, publicKeys []*signature.Point, s int) (*RingSignature, error) {
+func Sign(message string, keyPair keys.KP, publicKeys []*curve2.Point, s int) (*RingSignature, error) {
 	// Define the size of the ring of public keys that will be used in signing
 	numberOfPKeys := len(publicKeys)
 
@@ -47,11 +48,11 @@ func SignMessage(message string, privateKey *big.Int, publicKey *signature.Point
 	}
 
 	// This 2 arrays of elliptic curve points will be calculated in cycle and used in hash calculation
-	var lArray []*signature.Point
-	var rArray []*signature.Point
+	var lArray []*curve2.Point
+	var rArray []*curve2.Point
 
 	// Calculating so-called key image which identifies the key pair of signer
-	keyImage := signature.GetKeyImage(curve, publicKey, privateKey)
+	keyImage := keyPair.GetKeyImage()
 
 	// lArray[i] = |r[i]*G, if i==s
 	//			   |r[i]*G + c[i]*P[i], else
@@ -125,7 +126,7 @@ func SignMessage(message string, privateKey *big.Int, publicKey *signature.Point
 		}
 	}
 	// Get private key as copy in *Int data type
-	pKey := new(big.Int).Set(privateKey)
+	pKey := new(big.Int).Set(keyPair.GetPrivateKey())
 
 	// c[s] = (c - sum) mod N
 	// c is previously calculated non-interactive challenge,
@@ -143,13 +144,13 @@ func SignMessage(message string, privateKey *big.Int, publicKey *signature.Point
 	}, nil
 }
 
-func (sig *RingSignature) VerifySignature(message string, publicKeys []*signature.Point) bool {
+func (sig *RingSignature) Verify(message string, publicKeys []*curve2.Point) bool {
 	// Define the size of the ring of public keys that will be used in signature
 	numberOfPKeys := len(publicKeys)
 
 	// This 2 arrays of elliptic curve points will be calculated in cycle and used in hash calculation
-	var newLArray []*signature.Point
-	var newRArray []*signature.Point
+	var newLArray []*curve2.Point
+	var newRArray []*curve2.Point
 
 	// A sum of c[i] in cList store in signature data structure (will be calculated)
 	cExpected := new(big.Int)
@@ -214,7 +215,7 @@ func (sig *RingSignature) VerifySignature(message string, publicKeys []*signatur
 	return cReal.Cmp(cExpected) == 0
 }
 
-func getHash(message string, lArray, rArray []*signature.Point) [32]byte {
+func getHash(message string, lArray, rArray []*curve2.Point) [32]byte {
 	messageToHash := message
 
 	for i := 0; i < len(lArray); i++ {

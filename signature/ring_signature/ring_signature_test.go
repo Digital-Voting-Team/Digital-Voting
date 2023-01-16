@@ -1,53 +1,65 @@
 package ring_signature
 
 import (
-	"digital-voting/signature"
+	curve2 "digital-voting/curve"
+	"digital-voting/keys"
 	"log"
 	"math/big"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestVerifySignature(t *testing.T) {
-	privateKey, publicKey := signature.GetKeyPair(curve)
+	keyPair, err := keys.ParseKeyPair(time.Now().String(), curve)
+	if err != nil {
+		log.Panicln(err)
+	}
+	publicKey := keyPair.GetPublicKey()
 
-	var publicKeys []*signature.Point
+	var publicKeys []*curve2.Point
 	publicKeys = append(publicKeys, publicKey)
 
 	for i := 0; i < 5; i++ {
-		_, publicKey := signature.GetKeyPair(curve)
-		publicKeys = append(publicKeys, publicKey)
+		tempKeyPair, err := keys.ParseKeyPair(time.Now().String(), curve)
+		if err != nil {
+			log.Panicln(err)
+		}
+		publicKeys = append(publicKeys, tempKeyPair.GetPublicKey())
 	}
 
 	message := "asd21312313"
 	s := 0
 
-	ringSignature, err := SignMessage(message, privateKey, publicKey, publicKeys, s)
+	ringSignature, err := Sign(message, keyPair, publicKeys, s)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	privateKey1, publicKey1 := signature.GetKeyPair(curve)
-	ringSignature1, err := SignMessage(message, privateKey1, publicKey1, publicKeys, s)
+	keyPair1, _ := keys.ParseKeyPair(time.Now().String(), curve)
+	ringSignature1, err := Sign(message, keyPair1, publicKeys, s)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	var publicKeys1 []*signature.Point
+	var publicKeys1 []*curve2.Point
 
 	for i := 0; i < 5; i++ {
-		_, publicKey := signature.GetKeyPair(curve)
-		publicKeys1 = append(publicKeys1, publicKey)
+		tempKeyPair, err := keys.ParseKeyPair(time.Now().String(), curve)
+		if err != nil {
+			log.Panicln(err)
+		}
+		publicKeys1 = append(publicKeys1, tempKeyPair.GetPublicKey())
 	}
 
 	type fields struct {
-		KeyImage *signature.Point
+		KeyImage *curve2.Point
 		CList    []*big.Int
 		RList    []*big.Int
 	}
 	type args struct {
 		message    string
-		publicKeys []*signature.Point
+		publicKeys []*curve2.Point
 	}
 	tests := []struct {
 		name   string
@@ -115,24 +127,24 @@ func TestVerifySignature(t *testing.T) {
 				CList:    tt.fields.CList,
 				RList:    tt.fields.RList,
 			}
-			if got := sig.VerifySignature(tt.args.message, tt.args.publicKeys); got != tt.want {
-				t.Errorf("VerifySignature() = %v, want %v", got, tt.want)
+			if got := sig.Verify(tt.args.message, tt.args.publicKeys); got != tt.want {
+				t.Errorf("Verify() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func Test_getHash(t *testing.T) {
-	var lArray []*signature.Point
-	var rArray []*signature.Point
+	var lArray []*curve2.Point
+	var rArray []*curve2.Point
 
 	lArray = append(lArray, curve.G())
 	rArray = append(rArray, curve.G())
 
 	type args struct {
 		message string
-		lArray  []*signature.Point
-		rArray  []*signature.Point
+		lArray  []*curve2.Point
+		rArray  []*curve2.Point
 	}
 	tests := []struct {
 		name     string

@@ -3,7 +3,7 @@ package single_signature
 import (
 	crypto "crypto/rand"
 	"crypto/sha1"
-	"digital-voting/signature"
+	"digital-voting/curve"
 	"digital-voting/signature/utils"
 	"encoding/hex"
 	"log"
@@ -13,12 +13,12 @@ import (
 )
 
 type ECDSA struct {
-	GenPoint *signature.Point
-	Curve    *signature.MontgomeryCurve
+	GenPoint *curve.Point
+	Curve    *curve.MontgomeryCurve
 }
 
 func NewECDSA() *ECDSA {
-	curve := signature.NewCurve25519()
+	curve := curve.NewCurve25519()
 	return &ECDSA{
 		GenPoint: curve.G(),
 		Curve:    curve,
@@ -63,7 +63,7 @@ func (ec *ECDSA) Sign(privateKey *big.Int, message string) (*big.Int, *big.Int) 
 	return &r, &s
 }
 
-func (ec *ECDSA) Verify(publicKey *signature.Point, message string, r, s *big.Int) bool {
+func (ec *ECDSA) Verify(publicKey *curve.Point, message string, r, s *big.Int) bool {
 	// 1. Verify that r and s are integers in the interval [1, n - 1].
 	if !utils.CheckInterval(r, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) ||
 		!utils.CheckInterval(s, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) {
