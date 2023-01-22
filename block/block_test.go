@@ -1,7 +1,6 @@
 package block
 
 import (
-	"math/big"
 	"testing"
 	"time"
 )
@@ -10,9 +9,9 @@ func TestBlock(t *testing.T) {
 	b := Block{
 		Header: Header{
 			Version:    1,
-			Previous:   &big.Int{},
+			Previous:   [32]byte{1, 4, 5, 6, 7, 46},
 			TimeStamp:  uint64(time.Unix(500, 10).Unix()),
-			MerkleRoot: &big.Int{},
+			MerkleRoot: [32]byte{1, 4, 5, 6, 7, 46},
 		},
 		Witness: Witness{
 			ValidatorsPublicKeys: nil,
@@ -23,7 +22,7 @@ func TestBlock(t *testing.T) {
 		},
 	}
 
-	expect := "ab6VvgItTKfL7E3Dv82EqUkREzzoE2aqYVxuK8U0_-Y="
+	expect := "qRe34zCgwa9scJCoZTFJx0_lg9kS2NC_qw4_BwbiNt8="
 
 	got := b.GetHash()
 	if got != expect {
@@ -31,7 +30,7 @@ func TestBlock(t *testing.T) {
 	}
 
 	var key = [33]byte{1, 2, 4, 41, 23}
-	var signature = [33]byte{6, 12, 9, 4, 3}
+	var signature = [65]byte{6, 12, 9, 4, 3}
 
 	b.Sign(key, signature)
 

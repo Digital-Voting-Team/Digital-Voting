@@ -13,9 +13,7 @@ type Block struct {
 	Body    Body    `json:"body"`
 }
 
-func (b *Block) Sign(publicKey, signature [33]byte) {
-	// TODO : should we verify signature here?
-
+func (b *Block) Sign(publicKey [33]byte, signature [65]byte) {
 	b.Witness.addSignature(publicKey, signature)
 }
 
