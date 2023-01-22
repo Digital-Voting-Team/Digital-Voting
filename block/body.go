@@ -1,8 +1,7 @@
 package block
 
-type transaction interface {
-}
+type transaction any
 
-type body struct {
-	transactions []transaction
+type Body struct {
+	Transactions []transaction `json:"transactions"`
 }
