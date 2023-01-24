@@ -1,6 +1,7 @@
 package single_signature
 
 import (
+	"crypto/sha256"
 	"digital-voting/curve"
 	"digital-voting/keys"
 	"log"
@@ -11,12 +12,12 @@ import (
 
 func TestKeyGeneration(t *testing.T) {
 	sign := NewECDSA()
-	keyPair1, err := keys.ParseKeyPair(time.Now().String(), sign.Curve)
+	keyPair1, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	keyPair2, err := keys.ParseKeyPair(time.Now().String(), sign.Curve)
+	keyPair2, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -37,12 +38,12 @@ func TestKeyGeneration(t *testing.T) {
 
 func TestVerify(t *testing.T) {
 	sign := NewECDSA()
-	keyPair1, err := keys.ParseKeyPair(time.Now().String(), sign.Curve)
+	keyPair1, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	keyPair2, err := keys.ParseKeyPair(time.Now().String(), sign.Curve)
+	keyPair2, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -54,8 +55,8 @@ func TestVerify(t *testing.T) {
 
 	msg := "String ...."
 	msg2 := "String2 ...."
-	r, s := sign.Sign(pk1, msg)
-	r1, s1 := sign.Sign(pk2, msg)
+	signature := sign.Sign(pk1, msg)
+	signature1 := sign.Sign(pk2, msg)
 	type fields struct {
 		GenPoint *curve.Point
 		Curve    *curve.MontgomeryCurve
@@ -63,8 +64,7 @@ func TestVerify(t *testing.T) {
 	type args struct {
 		publicKey *curve.Point
 		message   string
-		r         *big.Int
-		s         *big.Int
+		signature *SingleSignature
 	}
 	tests := []struct {
 		name   string
@@ -77,8 +77,7 @@ func TestVerify(t *testing.T) {
 			args: args{
 				publicKey: pbk1,
 				message:   msg,
-				r:         r,
-				s:         s,
+				signature: signature,
 			},
 			want: true,
 		},
@@ -87,8 +86,7 @@ func TestVerify(t *testing.T) {
 			args: args{
 				publicKey: pbk1,
 				message:   msg2,
-				r:         r,
-				s:         s,
+				signature: signature,
 			},
 			want: false,
 		},
@@ -97,8 +95,7 @@ func TestVerify(t *testing.T) {
 			args: args{
 				publicKey: pbk2,
 				message:   msg,
-				r:         r,
-				s:         s,
+				signature: signature,
 			},
 			want: false,
 		},
@@ -107,8 +104,7 @@ func TestVerify(t *testing.T) {
 			args: args{
 				publicKey: pbk2,
 				message:   msg,
-				r:         r1,
-				s:         s1,
+				signature: signature1,
 			},
 			want: true,
 		},
@@ -117,8 +113,7 @@ func TestVerify(t *testing.T) {
 			args: args{
 				publicKey: pbk2,
 				message:   msg2,
-				r:         r1,
-				s:         s1,
+				signature: signature1,
 			},
 			want: false,
 		},
@@ -127,15 +122,14 @@ func TestVerify(t *testing.T) {
 			args: args{
 				publicKey: pbk1,
 				message:   msg,
-				r:         r1,
-				s:         s1,
+				signature: signature1,
 			},
 			want: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := sign.Verify(tt.args.publicKey, tt.args.message, tt.args.r, tt.args.s); got != tt.want {
+			if got := sign.Verify(tt.args.publicKey, tt.args.message, tt.args.signature); got != tt.want {
 				t.Errorf("Verify() = %v, want %v", got, tt.want)
 			}
 		})

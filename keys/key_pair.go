@@ -122,24 +122,25 @@ func (kp *KeyPair) Equal(f *KeyPair) bool {
 }
 
 func newKeyPair(seed string, curve curve.ICurve) (*KeyPair, error) {
-	//rawSeed, err := strkey.Decode(strkey.VersionByteSeed, seed)
-	//if err != nil {
-	//	return nil, err
-	//}
+	rawSeed, err := strkey.Decode(strkey.VersionByteSeed, seed)
+	if err != nil {
+		return nil, err
+	}
 
-	rawSeed := []byte(seed)
 	reader := bytes.NewReader(rawSeed)
 	private := genPrivateKey(reader)
 	public := getPublicKey(private, curve)
 
+	publicBytes := public.X.Bytes()
+	// TODO think about better way to fill address
 	//xBytes := public.X.Bytes()
 	//yBytes := public.Y.Bytes()
 	//publicBytes := append(xBytes, yBytes...)
-	//address, err := strkey.Encode(strkey.VersionByteAccountID, publicBytes)
-	//if err != nil {
-	//	return nil, err
-	//}
-	address := ""
+	address, err := strkey.Encode(strkey.VersionByteAccountID, publicBytes)
+	if err != nil {
+		return nil, err
+	}
+
 	return &KeyPair{
 		address:    address,
 		seed:       seed,
@@ -150,23 +151,25 @@ func newKeyPair(seed string, curve curve.ICurve) (*KeyPair, error) {
 }
 
 func newKeyPairFromRawSeed(rawSeed [32]byte, curve curve.ICurve) (*KeyPair, error) {
-	//seed, err := strkey.Encode(strkey.VersionByteSeed, rawSeed[:])
-	//if err != nil {
-	//	return nil, err
-	//}
-	seed := string(rawSeed[:])
+	seed, err := strkey.Encode(strkey.VersionByteSeed, rawSeed[:])
+	if err != nil {
+		return nil, err
+	}
+
 	reader := bytes.NewReader(rawSeed[:])
 	private := genPrivateKey(reader)
 	public := getPublicKey(private, curve)
 
+	publicBytes := public.X.Bytes()
+	// TODO think about better way to fill address
 	//xBytes := public.X.Bytes()
 	//yBytes := public.Y.Bytes()
 	//publicBytes := append(xBytes, yBytes...)
-	//address, err := strkey.Encode(strkey.VersionByteAccountID, publicBytes)
-	//if err != nil {
-	//	return nil, err
-	//}
-	address := ""
+	address, err := strkey.Encode(strkey.VersionByteAccountID, publicBytes)
+	if err != nil {
+		return nil, err
+	}
+
 	return &KeyPair{
 		address:    address,
 		seed:       seed,

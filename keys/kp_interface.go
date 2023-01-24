@@ -35,7 +35,7 @@ type KP interface {
 }
 
 // Random creates a random KeyPair keys
-func Random() (*KeyPair, error) {
+func Random(curve curve.ICurve) (*KeyPair, error) {
 	var rawSeed [32]byte
 
 	_, err := io.ReadFull(rand.Reader, rawSeed[:])
@@ -43,7 +43,7 @@ func Random() (*KeyPair, error) {
 		return nil, err
 	}
 
-	kp, err := FromRawSeed(rawSeed)
+	kp, err := FromRawSeed(rawSeed, curve)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,6 @@ func ParseKeyPair(seed string, curve curve.ICurve) (*KeyPair, error) {
 }
 
 // FromRawSeed creates a new keys from the provided raw ED25519 seed
-func FromRawSeed(rawSeed [32]byte) (*KeyPair, error) {
-	curve := curve.NewCurve25519()
+func FromRawSeed(rawSeed [32]byte, curve curve.ICurve) (*KeyPair, error) {
 	return newKeyPairFromRawSeed(rawSeed, curve)
 }

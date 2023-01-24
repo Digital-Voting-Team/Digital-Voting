@@ -25,7 +25,12 @@ func NewECDSA() *ECDSA {
 	}
 }
 
-func (ec *ECDSA) Sign(privateKey *big.Int, message string) (*big.Int, *big.Int) {
+type SingleSignature struct {
+	R *big.Int
+	S *big.Int
+}
+
+func (ec *ECDSA) Sign(privateKey *big.Int, message string) *SingleSignature {
 	rand.Seed(time.Now().UnixNano())
 	var (
 		r     big.Int
@@ -60,13 +65,13 @@ func (ec *ECDSA) Sign(privateKey *big.Int, message string) (*big.Int, *big.Int) 
 		s.Mul(privateKey, &r).Add(&s, e).Mul(&s, invK).Mod(&s, ec.Curve.N)
 	}
 	// 7. A's signature for the message m is (r, s).
-	return &r, &s
+	return &SingleSignature{R: &r, S: &s}
 }
 
-func (ec *ECDSA) Verify(publicKey *curve.Point, message string, r, s *big.Int) bool {
+func (ec *ECDSA) Verify(publicKey *curve.Point, message string, signature *SingleSignature) bool {
 	// 1. Verify that r and s are integers in the interval [1, n - 1].
-	if !utils.CheckInterval(r, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) ||
-		!utils.CheckInterval(s, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) {
+	if !utils.CheckInterval(signature.R, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) ||
+		!utils.CheckInterval(signature.S, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) {
 		return false
 	}
 
@@ -77,7 +82,7 @@ func (ec *ECDSA) Verify(publicKey *curve.Point, message string, r, s *big.Int) b
 
 	// 3. Compute w = s^-1 mod n.
 	var w big.Int
-	w.ModInverse(s, ec.Curve.N)
+	w.ModInverse(signature.S, ec.Curve.N)
 
 	// 4. Compute u1 = ew mod n and u2 = rw mod n.
 	var (
@@ -85,7 +90,7 @@ func (ec *ECDSA) Verify(publicKey *curve.Point, message string, r, s *big.Int) b
 		u2 big.Int
 	)
 	u1.Mul(e, &w).Mod(&u1, ec.Curve.N)
-	u2.Mul(r, &w).Mod(&u2, ec.Curve.N)
+	u2.Mul(signature.R, &w).Mod(&u2, ec.Curve.N)
 
 	// 5. Compute X = u1G + u2Q.
 	u1G, err := ec.Curve.MulPoint(&u1, ec.GenPoint)
@@ -110,5 +115,5 @@ func (ec *ECDSA) Verify(publicKey *curve.Point, message string, r, s *big.Int) b
 	v := new(big.Int).Mod(pointX.X, ec.Curve.N)
 
 	// 7. Accept the signature if and only if v = r.
-	return new(big.Int).Sub(v, r).String() == "0"
+	return new(big.Int).Sub(v, signature.R).String() == "0"
 }

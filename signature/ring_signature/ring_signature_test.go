@@ -1,6 +1,7 @@
 package ring_signature
 
 import (
+	"crypto/sha256"
 	curve2 "digital-voting/curve"
 	"digital-voting/keys"
 	"log"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestVerifySignature(t *testing.T) {
-	keyPair, err := keys.ParseKeyPair(time.Now().String(), curve)
+	keyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), curve)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -21,7 +22,7 @@ func TestVerifySignature(t *testing.T) {
 	publicKeys = append(publicKeys, publicKey)
 
 	for i := 0; i < 5; i++ {
-		tempKeyPair, err := keys.ParseKeyPair(time.Now().String(), curve)
+		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), curve)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -36,7 +37,7 @@ func TestVerifySignature(t *testing.T) {
 		log.Panicln(err)
 	}
 
-	keyPair1, _ := keys.ParseKeyPair(time.Now().String(), curve)
+	keyPair1, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), curve)
 	ringSignature1, err := Sign(message, keyPair1, publicKeys, s)
 	if err != nil {
 		log.Panicln(err)
@@ -45,7 +46,7 @@ func TestVerifySignature(t *testing.T) {
 	var publicKeys1 []*curve2.Point
 
 	for i := 0; i < 5; i++ {
-		tempKeyPair, err := keys.ParseKeyPair(time.Now().String(), curve)
+		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), curve)
 		if err != nil {
 			log.Panicln(err)
 		}
