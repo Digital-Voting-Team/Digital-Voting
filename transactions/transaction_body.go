@@ -1,5 +1,5 @@
 package transactions
 
 type TransactionBody interface {
-	GetStringToSign()
+	GetStringToSign() string
 }
