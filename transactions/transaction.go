@@ -6,12 +6,6 @@ import (
 	"log"
 )
 
-type Signature interface {
-}
-
-type RingSignature interface {
-}
-
 type Transaction struct {
 	TxType uint8               `json:"tx_type"`
 	TxBody TransactionSpecific `json:"tx_body"`

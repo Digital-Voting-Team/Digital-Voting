@@ -1,4 +1,4 @@
-package ring_signature
+package signatures
 
 import (
 	"crypto/sha256"

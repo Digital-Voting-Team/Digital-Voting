@@ -1,14 +1,15 @@
 package transactions
 
 import (
+	signatures "digital-voting/signature/signatures/single_signature"
 	"encoding/json"
 	"fmt"
 )
 
 type TxVote struct {
-	Answer    uint8     `json:"answer"`
-	Signature Signature `json:"signature"`
-	PublicKey [33]byte  `json:"public_key"`
+	Answer    uint8                      `json:"answer"`
+	Signature signatures.SingleSignature `json:"signature"`
+	PublicKey [33]byte                   `json:"public_key"`
 }
 
 func NewTxVote(Answer uint8) *TxVote {

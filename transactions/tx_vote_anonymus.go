@@ -1,13 +1,14 @@
 package transactions
 
 import (
+	signatures "digital-voting/signature/signatures/ring_signature"
 	"encoding/json"
 	"fmt"
 )
 
 type TxVoteAnonymous struct {
-	Answer    uint8         `json:"answer"`
-	Signature RingSignature `json:"signature"`
+	Answer    uint8                    `json:"answer"`
+	Signature signatures.RingSignature `json:"signature"`
 }
 
 func NewTxVoteAnonymous(Answer uint8) *TxVoteAnonymous {

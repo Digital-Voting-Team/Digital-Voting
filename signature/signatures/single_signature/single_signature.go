@@ -1,4 +1,4 @@
-package single_signature
+package signatures
 
 import (
 	crypto "crypto/rand"

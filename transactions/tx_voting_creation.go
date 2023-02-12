@@ -1,17 +1,18 @@
 package transactions
 
 import (
+	signatures "digital-voting/signature/signatures/single_signature"
 	"encoding/json"
 	"fmt"
 )
 
 type TxVotingCreation struct {
-	ExpirationDate    uint32      `json:"expiration_date"`
-	VotingDescription [1024]byte  `json:"voting_description"`
-	Answers           [][256]byte `json:"answers"`
-	Whitelist         [][33]byte  `json:"whitelist"`
-	AdminSignature    Signature   `json:"admin_signature"`
-	AdminPubKey       [33]byte    `json:"admin_pub_key"`
+	ExpirationDate    uint32                     `json:"expiration_date"`
+	VotingDescription [1024]byte                 `json:"voting_description"`
+	Answers           [][256]byte                `json:"answers"`
+	Whitelist         [][33]byte                 `json:"whitelist"`
+	AdminSignature    signatures.SingleSignature `json:"admin_signature"`
+	AdminPubKey       [33]byte                   `json:"admin_pub_key"`
 }
 
 func NewTxVotingCreation(ExpirationDate uint32, VotingDescription [1024]byte, Answers [][256]byte, Whitelist [][33]byte) *TxVotingCreation {
