@@ -3,7 +3,7 @@ package single_signature
 import (
 	crypto "crypto/rand"
 	"crypto/sha1"
-	"digital-voting/curve"
+	curve2 "digital-voting/curve"
 	"digital-voting/signature/utils"
 	"encoding/hex"
 	"log"
@@ -13,12 +13,12 @@ import (
 )
 
 type ECDSA struct {
-	GenPoint *curve.Point
-	Curve    *curve.MontgomeryCurve
+	GenPoint *curve2.Point
+	Curve    *curve2.MontgomeryCurve
 }
 
 func NewECDSA() *ECDSA {
-	curve := curve.NewCurve25519()
+	curve := curve2.NewCurve25519()
 	return &ECDSA{
 		GenPoint: curve.G(),
 		Curve:    curve,
@@ -26,8 +26,8 @@ func NewECDSA() *ECDSA {
 }
 
 type SingleSignature struct {
-	R *big.Int
-	S *big.Int
+	R *big.Int `json:"r"`
+	S *big.Int `json:"s"`
 }
 
 func (ec *ECDSA) Sign(privateKey *big.Int, message string) *SingleSignature {
@@ -68,7 +68,7 @@ func (ec *ECDSA) Sign(privateKey *big.Int, message string) *SingleSignature {
 	return &SingleSignature{R: &r, S: &s}
 }
 
-func (ec *ECDSA) Verify(publicKey *curve.Point, message string, signature *SingleSignature) bool {
+func (ec *ECDSA) Verify(publicKey *curve2.Point, message string, signature *SingleSignature) bool {
 	// 1. Verify that r and s are integers in the interval [1, n - 1].
 	if !utils.CheckInterval(signature.R, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) ||
 		!utils.CheckInterval(signature.S, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) {

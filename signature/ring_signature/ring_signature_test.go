@@ -12,7 +12,8 @@ import (
 )
 
 func TestVerifySignature(t *testing.T) {
-	keyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), curve)
+	sign := NewECDSA_RS()
+	keyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -22,7 +23,7 @@ func TestVerifySignature(t *testing.T) {
 	publicKeys = append(publicKeys, publicKey)
 
 	for i := 0; i < 5; i++ {
-		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), curve)
+		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -32,13 +33,13 @@ func TestVerifySignature(t *testing.T) {
 	message := "asd21312313"
 	s := 0
 
-	ringSignature, err := Sign(message, keyPair, publicKeys, s)
+	ringSignature, err := sign.Sign(message, keyPair, publicKeys, s)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	keyPair1, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), curve)
-	ringSignature1, err := Sign(message, keyPair1, publicKeys, s)
+	keyPair1, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	ringSignature1, err := sign.Sign(message, keyPair1, publicKeys, s)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -46,7 +47,7 @@ func TestVerifySignature(t *testing.T) {
 	var publicKeys1 []*curve2.Point
 
 	for i := 0; i < 5; i++ {
-		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), curve)
+		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -128,7 +129,7 @@ func TestVerifySignature(t *testing.T) {
 				CList:    tt.fields.CList,
 				RList:    tt.fields.RList,
 			}
-			if got := sig.Verify(tt.args.message, tt.args.publicKeys); got != tt.want {
+			if got := sign.Verify(tt.args.message, tt.args.publicKeys, sig); got != tt.want {
 				t.Errorf("Verify() = %v, want %v", got, tt.want)
 			}
 		})
@@ -136,11 +137,12 @@ func TestVerifySignature(t *testing.T) {
 }
 
 func Test_getHash(t *testing.T) {
+	sign := NewECDSA_RS()
 	var lArray []*curve2.Point
 	var rArray []*curve2.Point
 
-	lArray = append(lArray, curve.G())
-	rArray = append(rArray, curve.G())
+	lArray = append(lArray, sign.GenPoint)
+	rArray = append(rArray, sign.GenPoint)
 
 	type args struct {
 		message string

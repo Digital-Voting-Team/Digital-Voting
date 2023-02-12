@@ -10,19 +10,28 @@ import (
 	"math/big"
 )
 
-var (
-	curve = curve2.NewCurve25519()
-)
+type ECDSA_RS struct {
+	GenPoint *curve2.Point
+	Curve    *curve2.MontgomeryCurve
+}
+
+func NewECDSA_RS() *ECDSA_RS {
+	curve := curve2.NewCurve25519()
+	return &ECDSA_RS{
+		GenPoint: curve.G(),
+		Curve:    curve,
+	}
+}
 
 // RingSignature
 // https://bytecoin.org/old/whitepaper.pdf
 type RingSignature struct {
-	KeyImage *curve2.Point
-	CList    []*big.Int
-	RList    []*big.Int
+	KeyImage *curve2.Point `json:"key_image"`
+	CList    []*big.Int    `json:"c_list"`
+	RList    []*big.Int    `json:"r_list"`
 }
 
-func Sign(message string, keyPair keys.KP, publicKeys []*curve2.Point, s int) (*RingSignature, error) {
+func (ec *ECDSA_RS) Sign(message string, keyPair keys.KP, publicKeys []*curve2.Point, s int) (*RingSignature, error) {
 	// Define the size of the ring of public keys that will be used in signing
 	numberOfPKeys := len(publicKeys)
 
@@ -37,11 +46,11 @@ func Sign(message string, keyPair keys.KP, publicKeys []*curve2.Point, s int) (*
 
 	var err error
 	for i := 0; i < numberOfPKeys; i++ {
-		cList[i], err = rand.Int(rand.Reader, curve.N)
+		cList[i], err = rand.Int(rand.Reader, ec.Curve.N)
 		if err != nil {
 			log.Panicln(err)
 		}
-		rList[i], err = rand.Int(rand.Reader, curve.N)
+		rList[i], err = rand.Int(rand.Reader, ec.Curve.N)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -67,12 +76,12 @@ func Sign(message string, keyPair keys.KP, publicKeys []*curve2.Point, s int) (*
 	for i := 0; i < numberOfPKeys; i++ {
 		rI := new(big.Int).Set(rList[i])
 
-		rG, err := curve.MulPoint(rI, curve.G())
+		rG, err := ec.Curve.MulPoint(rI, ec.GenPoint)
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		rH, err := curve.MulPoint(rI, curve.ComputeDeterministicHash(publicKeys[i].Copy()))
+		rH, err := ec.Curve.MulPoint(rI, ec.Curve.ComputeDeterministicHash(publicKeys[i].Copy()))
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -87,22 +96,22 @@ func Sign(message string, keyPair keys.KP, publicKeys []*curve2.Point, s int) (*
 
 		cI := new(big.Int).Set(cList[i])
 
-		cP, err := curve.MulPoint(cI, publicKeys[i].Copy())
+		cP, err := ec.Curve.MulPoint(cI, publicKeys[i].Copy())
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		rGcP, err := curve.AddPoint(rG, cP)
+		rGcP, err := ec.Curve.AddPoint(rG, cP)
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		cIPoint, err := curve.MulPoint(cI, keyImage)
+		cIPoint, err := ec.Curve.MulPoint(cI, keyImage)
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		rHcI, err := curve.AddPoint(rH, cIPoint)
+		rHcI, err := ec.Curve.AddPoint(rH, cIPoint)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -134,8 +143,8 @@ func Sign(message string, keyPair keys.KP, publicKeys []*curve2.Point, s int) (*
 	//
 	// r[s] = r[s] - c[s]*pKey
 	// pKey is the signer's private key
-	cList[s] = new(big.Int).Mod(new(big.Int).Sub(c, sum), curve.N)
-	rList[s] = new(big.Int).Mod(new(big.Int).Sub(rList[s], new(big.Int).Mul(cList[s], pKey)), curve.N)
+	cList[s] = new(big.Int).Mod(new(big.Int).Sub(c, sum), ec.Curve.N)
+	rList[s] = new(big.Int).Mod(new(big.Int).Sub(rList[s], new(big.Int).Mul(cList[s], pKey)), ec.Curve.N)
 
 	return &RingSignature{
 		KeyImage: keyImage,
@@ -144,7 +153,7 @@ func Sign(message string, keyPair keys.KP, publicKeys []*curve2.Point, s int) (*
 	}, nil
 }
 
-func (sig *RingSignature) Verify(message string, publicKeys []*curve2.Point) bool {
+func (ec *ECDSA_RS) Verify(message string, publicKeys []*curve2.Point, sig *RingSignature) bool {
 	// Define the size of the ring of public keys that will be used in signature
 	numberOfPKeys := len(publicKeys)
 
@@ -165,34 +174,34 @@ func (sig *RingSignature) Verify(message string, publicKeys []*curve2.Point) boo
 	for i := 0; i < numberOfPKeys; i++ {
 		rI := new(big.Int).Set(sig.RList[i])
 
-		rG, err := curve.MulPoint(rI, curve.G())
+		rG, err := ec.Curve.MulPoint(rI, ec.GenPoint)
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		rH, err := curve.MulPoint(rI, curve.ComputeDeterministicHash(publicKeys[i].Copy()))
+		rH, err := ec.Curve.MulPoint(rI, ec.Curve.ComputeDeterministicHash(publicKeys[i].Copy()))
 		if err != nil {
 			log.Panicln(err)
 		}
 
 		cI := new(big.Int).Set(sig.CList[i])
 
-		cP, err := curve.MulPoint(cI, publicKeys[i].Copy())
+		cP, err := ec.Curve.MulPoint(cI, publicKeys[i].Copy())
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		cIPoint, err := curve.MulPoint(cI, sig.KeyImage)
+		cIPoint, err := ec.Curve.MulPoint(cI, sig.KeyImage)
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		currentLValue, err := curve.AddPoint(rG, cP)
+		currentLValue, err := ec.Curve.AddPoint(rG, cP)
 		if err != nil {
 			log.Panicln(err)
 		}
 
-		currentRValue, err := curve.AddPoint(rH, cIPoint)
+		currentRValue, err := ec.Curve.AddPoint(rH, cIPoint)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -200,14 +209,14 @@ func (sig *RingSignature) Verify(message string, publicKeys []*curve2.Point) boo
 		newLArray = append(newLArray, currentLValue)
 		newRArray = append(newRArray, currentRValue)
 
-		cExpected = new(big.Int).Mod(new(big.Int).Add(cExpected, sig.CList[i]), curve.N)
+		cExpected = new(big.Int).Mod(new(big.Int).Add(cExpected, sig.CList[i]), ec.Curve.N)
 	}
 
 	// Calculate non-interactive challenge with use of message and 2 previously calculated arrays
 	hash := getHash(message, newLArray, newRArray)
 	// Get *Int from this challenge, mod N
 	// N is the prime order of the base point of the curve.
-	cReal := new(big.Int).Mod(new(big.Int).SetBytes(hash[:]), curve.N)
+	cReal := new(big.Int).Mod(new(big.Int).SetBytes(hash[:]), ec.Curve.N)
 
 	// Compare the value got as sum of c[i] from signature data structure
 	// and the value calculated as non-interactive challenge.
