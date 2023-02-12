@@ -1,8 +1,8 @@
 package keys
 
 import (
-	"digital-voting/curve"
-	"digital-voting/strkey"
+	"digital-voting/signature/curve"
+	"digital-voting/signature/strkey"
 	"math/big"
 )
 

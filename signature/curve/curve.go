@@ -1,7 +1,7 @@
 package curve
 
 import (
-	"digital-voting/signature/utils"
+	"digital-voting/signature/signatures/utils"
 	"errors"
 	"fmt"
 	"log"

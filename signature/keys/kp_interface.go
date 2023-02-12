@@ -2,8 +2,8 @@ package keys
 
 import (
 	"crypto/rand"
-	"digital-voting/curve"
-	"digital-voting/strkey"
+	"digital-voting/signature/curve"
+	"digital-voting/signature/strkey"
 	"errors"
 	"io"
 	"math/big"
@@ -14,10 +14,10 @@ var (
 	// could not be decoded.
 	ErrInvalidKey = errors.New("invalid key")
 
-	//// ErrInvalidSignature is returned when the signature is invalid, either
+	//// ErrInvalidSignature is returned when the signatures is invalid, either
 	//// through malformation or if it does not verify the message against the
 	//// provided public key
-	//ErrInvalidSignature = errors.New("signature verification failed")
+	//ErrInvalidSignature = errors.New("signatures verification failed")
 	//
 	//// ErrCannotSign is returned when attempting to sign a message when
 	//// the keys do not have the secret key available

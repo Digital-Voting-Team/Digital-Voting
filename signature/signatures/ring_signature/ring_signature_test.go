@@ -2,8 +2,8 @@ package ring_signature
 
 import (
 	"crypto/sha256"
-	curve2 "digital-voting/curve"
-	"digital-voting/keys"
+	curve2 "digital-voting/signature/curve"
+	"digital-voting/signature/keys"
 	"log"
 	"math/big"
 	"reflect"
@@ -70,7 +70,7 @@ func TestVerifySignature(t *testing.T) {
 		want   bool
 	}{
 		{
-			name: "Correct ring signature",
+			name: "Correct ring signatures",
 			fields: fields{
 				KeyImage: ringSignature.KeyImage,
 				CList:    ringSignature.CList,

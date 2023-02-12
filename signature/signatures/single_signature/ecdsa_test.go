@@ -2,8 +2,8 @@ package single_signature
 
 import (
 	"crypto/sha256"
-	"digital-voting/curve"
-	"digital-voting/keys"
+	"digital-voting/signature/curve"
+	"digital-voting/signature/keys"
 	"log"
 	"math/big"
 	"testing"

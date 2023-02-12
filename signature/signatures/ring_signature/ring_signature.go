@@ -3,8 +3,8 @@ package ring_signature
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	curve2 "digital-voting/curve"
-	"digital-voting/keys"
+	curve2 "digital-voting/signature/curve"
+	"digital-voting/signature/keys"
 	"fmt"
 	"log"
 	"math/big"
@@ -154,14 +154,14 @@ func (ec *ECDSA_RS) Sign(message string, keyPair keys.KP, publicKeys []*curve2.P
 }
 
 func (ec *ECDSA_RS) Verify(message string, publicKeys []*curve2.Point, sig *RingSignature) bool {
-	// Define the size of the ring of public keys that will be used in signature
+	// Define the size of the ring of public keys that will be used in signatures
 	numberOfPKeys := len(publicKeys)
 
 	// This 2 arrays of elliptic curve points will be calculated in cycle and used in hash calculation
 	var newLArray []*curve2.Point
 	var newRArray []*curve2.Point
 
-	// A sum of c[i] in cList store in signature data structure (will be calculated)
+	// A sum of c[i] in cList store in signatures data structure (will be calculated)
 	cExpected := new(big.Int)
 
 	// newLArray[i] = r[i]*G + c[i]*P[i]
@@ -218,7 +218,7 @@ func (ec *ECDSA_RS) Verify(message string, publicKeys []*curve2.Point, sig *Ring
 	// N is the prime order of the base point of the curve.
 	cReal := new(big.Int).Mod(new(big.Int).SetBytes(hash[:]), ec.Curve.N)
 
-	// Compare the value got as sum of c[i] from signature data structure
+	// Compare the value got as sum of c[i] from signatures data structure
 	// and the value calculated as non-interactive challenge.
 	// Verification must not pass if values are different.
 	return cReal.Cmp(cExpected) == 0

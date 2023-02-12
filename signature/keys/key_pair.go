@@ -2,9 +2,9 @@ package keys
 
 import (
 	"bytes"
-	"digital-voting/curve"
-	"digital-voting/signature/utils"
-	"digital-voting/strkey"
+	"digital-voting/signature/curve"
+	"digital-voting/signature/signatures/utils"
+	"digital-voting/signature/strkey"
 	"encoding/hex"
 	"io"
 	"log"
@@ -68,7 +68,7 @@ func (kp *KeyPair) FromAddress() (*FromAddress, error) {
 	return newFromAddress(kp.address)
 }
 
-//func sign(signature, privateKey, message []byte) {
+//func sign(signatures, privateKey, message []byte) {
 //	if l := len(privateKey); l != PrivateKeySize {
 //		panic("ed25519: bad private key length: " + strconv.Itoa(l))
 //	}
@@ -106,8 +106,8 @@ func (kp *KeyPair) FromAddress() (*FromAddress, error) {
 //
 //	S := edwards25519.NewScalar().MultiplyAdd(k, s, r)
 //
-//	copy(signature[:32], R.Bytes())
-//	copy(signature[32:], S.Bytes())
+//	copy(signatures[:32], R.Bytes())
+//	copy(signatures[32:], S.Bytes())
 //}
 
 // Equal compares two KeyPair instances.

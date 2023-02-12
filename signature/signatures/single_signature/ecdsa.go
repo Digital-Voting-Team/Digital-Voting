@@ -3,8 +3,8 @@ package single_signature
 import (
 	crypto "crypto/rand"
 	"crypto/sha1"
-	curve2 "digital-voting/curve"
-	"digital-voting/signature/utils"
+	curve2 "digital-voting/signature/curve"
+	"digital-voting/signature/signatures/utils"
 	"encoding/hex"
 	"log"
 	"math/big"
@@ -64,7 +64,7 @@ func (ec *ECDSA) Sign(privateKey *big.Int, message string) *SingleSignature {
 		// s = invK * (e + privateKey*r) % *ec.Curve.N
 		s.Mul(privateKey, &r).Add(&s, e).Mul(&s, invK).Mod(&s, ec.Curve.N)
 	}
-	// 7. A's signature for the message m is (r, s).
+	// 7. A's signatures for the message m is (r, s).
 	return &SingleSignature{R: &r, S: &s}
 }
 
@@ -106,7 +106,7 @@ func (ec *ECDSA) Verify(publicKey *curve2.Point, message string, signature *Sing
 		log.Fatal(err)
 	}
 
-	// 6. If X = 0, then reject the signature.
+	// 6. If X = 0, then reject the signatures.
 	// Otherwise, convert the x-coordinate x1 of X to an integer x1, and compute v = x1 mod n.
 	if !ec.Curve.IsOnCurve(pointX) {
 		return false
@@ -114,6 +114,6 @@ func (ec *ECDSA) Verify(publicKey *curve2.Point, message string, signature *Sing
 	// v := *pointX.X % *ec.Curve.N
 	v := new(big.Int).Mod(pointX.X, ec.Curve.N)
 
-	// 7. Accept the signature if and only if v = r.
+	// 7. Accept the signatures if and only if v = r.
 	return new(big.Int).Sub(v, signature.R).String() == "0"
 }
