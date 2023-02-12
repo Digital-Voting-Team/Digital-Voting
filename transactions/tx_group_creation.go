@@ -2,40 +2,34 @@ package transactions
 
 import (
 	"fmt"
-	"math/rand"
 )
 
-type signature interface {
-}
-
-type txGroupCreation struct {
-	txType            uint8
-	groupIdentifier   [33]byte
-	groupName         [256]byte
-	membersPublicKeys [][33]byte
-	AdminSignature    signature
+type TxGroupCreation struct {
+	GroupIdentifier   [33]byte
+	GroupName         [256]byte
+	MembersPublicKeys [][33]byte
+	AdminSignature    Signature
 	AdminPubKey       [33]byte
-	nonce             uint32
 }
 
-func newTxGroupCreation(txType uint8, groupIdentifier [33]byte, groupName [256]byte, membersPublicKeys ...[33]byte) *txGroupCreation {
-	return &txGroupCreation{txType: txType, groupIdentifier: groupIdentifier, groupName: groupName, membersPublicKeys: membersPublicKeys, nonce: rand.Uint32()}
+func newTxGroupCreation(txType uint8, GroupIdentifier [33]byte, GroupName [256]byte, MembersPublicKeys ...[33]byte) *TxGroupCreation {
+	return &TxGroupCreation{GroupIdentifier: GroupIdentifier, GroupName: GroupName, MembersPublicKeys: MembersPublicKeys}
 }
 
-func (tx *txGroupCreation) AddGroupMember(publicKey [33]byte) {
-	tx.membersPublicKeys = append(tx.membersPublicKeys, publicKey)
+func (tx *TxGroupCreation) AddGroupMember(publicKey [33]byte) {
+	tx.MembersPublicKeys = append(tx.MembersPublicKeys, publicKey)
 }
 
-func (tx *txGroupCreation) RemoveGroupMember(publicKey [33]byte) {
-	for i, key := range tx.membersPublicKeys {
+func (tx *TxGroupCreation) RemoveGroupMember(publicKey [33]byte) {
+	for i, key := range tx.MembersPublicKeys {
 		//it works for [33]byte
 		if key == publicKey {
-			tx.membersPublicKeys = append(tx.membersPublicKeys[:i], tx.membersPublicKeys[i+1:]...)
+			tx.MembersPublicKeys = append(tx.MembersPublicKeys[:i], tx.MembersPublicKeys[i+1:]...)
 			return
 		}
 	}
 }
 
-func (tx *txGroupCreation) GetStringToSign() string {
-	return fmt.Sprintf("%d, %v, %v, %v, %d", tx.txType, tx.groupIdentifier, tx.groupName, tx.membersPublicKeys, tx.nonce)
+func (tx *TxGroupCreation) GetStringToSign() string {
+	return fmt.Sprintf("%v, %v, %v", tx.GroupIdentifier, tx.GroupName, tx.MembersPublicKeys)
 }

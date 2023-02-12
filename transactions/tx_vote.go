@@ -2,19 +2,17 @@ package transactions
 
 import "fmt"
 
-type txVote struct {
-	txType     uint8
-	prevTxHash [256]byte
-	answer     uint8
+type TxVote struct {
+	PrevTxHash [256]byte
+	Answer     uint8
 	Signature  Signature
-	PublicKey  Address
-	nonce      uint32
+	PublicKey  [33]byte
 }
 
-func newTxVote(txType uint8, prevTxHash [256]byte, answer uint8, nonce uint32) *txVote {
-	return &txVote{txType: txType, prevTxHash: prevTxHash, answer: answer, nonce: nonce}
+func NewTxVote(PrevTxHash [256]byte, Answer uint8) *TxVote {
+	return &TxVote{PrevTxHash: PrevTxHash, Answer: Answer}
 }
 
-func (tx *txVote) GetStringToSign() string {
-	return fmt.Sprintf("%d, %v, %d, %d", tx.txType, tx.prevTxHash, tx.answer, tx.nonce)
+func (tx *TxVote) GetStringToSign() string {
+	return fmt.Sprintf("%v, %d", tx.PrevTxHash, tx.Answer)
 }

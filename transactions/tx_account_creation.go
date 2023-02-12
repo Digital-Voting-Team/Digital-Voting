@@ -2,25 +2,19 @@ package transactions
 
 import (
 	"fmt"
-	"math/rand"
 )
 
-type signature interface {
-}
-
-type txAccountCreation struct {
-	txType         uint8
-	accountType    uint8
-	newPubKey      [33]byte
-	AdminSignature signature
+type TxAccountCreation struct {
+	AccountType    uint8
+	NewPubKey      [33]byte
+	AdminSignature Signature
 	AdminPubKey    [33]byte
-	nonce          uint32
 }
 
-func newTxAccCreation(txType uint8, accountType uint8, newPubKey [33]byte) *txAccountCreation {
-	return &txAccountCreation{txType: txType, accountType: accountType, newPubKey: newPubKey, nonce: rand.Uint32()}
+func NewTxAccCreation(AccountType uint8, NewPubKey [33]byte) *TxAccountCreation {
+	return &TxAccountCreation{AccountType: AccountType, NewPubKey: NewPubKey}
 }
 
-func (tx *txAccountCreation) GetStringToSign() string {
-	return fmt.Sprintf("%d, %d, %v, %d", tx.txType, tx.accountType, tx.newPubKey, tx.nonce)
+func (tx *TxAccountCreation) GetStringToSign() string {
+	return fmt.Sprintf("%d, %v", tx.AccountType, tx.NewPubKey)
 }
