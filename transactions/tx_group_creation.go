@@ -1,15 +1,16 @@
 package transactions
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
 type TxGroupCreation struct {
-	GroupIdentifier   [33]byte
-	GroupName         [256]byte
-	MembersPublicKeys [][33]byte
-	AdminSignature    Signature
-	AdminPubKey       [33]byte
+	GroupIdentifier   [33]byte   `json:"group_identifier"`
+	GroupName         [256]byte  `json:"group_name"`
+	MembersPublicKeys [][33]byte `json:"members_public_keys"`
+	AdminSignature    Signature  `json:"admin_signature"`
+	AdminPubKey       [33]byte   `json:"admin_pub_key"`
 }
 
 func newTxGroupCreation(txType uint8, GroupIdentifier [33]byte, GroupName [256]byte, MembersPublicKeys ...[33]byte) *TxGroupCreation {
@@ -32,4 +33,9 @@ func (tx *TxGroupCreation) RemoveGroupMember(publicKey [33]byte) {
 
 func (tx *TxGroupCreation) GetStringToSign() string {
 	return fmt.Sprintf("%v, %v, %v", tx.GroupIdentifier, tx.GroupName, tx.MembersPublicKeys)
+}
+
+func (tx *TxGroupCreation) String() string {
+	str, _ := json.Marshal(tx)
+	return string(str)
 }
