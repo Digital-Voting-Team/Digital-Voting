@@ -1,20 +1,25 @@
 package transactions
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
-type txVote struct {
-	txType     uint8
-	prevTxHash [256]byte
-	answer     uint8
-	Signature  Signature
-	PublicKey  Address
-	nonce      uint32
+type TxVote struct {
+	Answer    uint8     `json:"answer"`
+	Signature Signature `json:"signature"`
+	PublicKey [33]byte  `json:"public_key"`
 }
 
-func newTxVote(txType uint8, prevTxHash [256]byte, answer uint8, nonce uint32) *txVote {
-	return &txVote{txType: txType, prevTxHash: prevTxHash, answer: answer, nonce: nonce}
+func NewTxVote(Answer uint8) *TxVote {
+	return &TxVote{Answer: Answer}
 }
 
-func (tx *txVote) GetStringToSign() string {
-	return fmt.Sprintf("%d, %v, %d, %d", tx.txType, tx.prevTxHash, tx.answer, tx.nonce)
+func (tx *TxVote) GetStringToSign() string {
+	return fmt.Sprintf("%d", tx.Answer)
+}
+
+func (tx *TxVote) String() string {
+	str, _ := json.Marshal(tx)
+	return string(str)
 }

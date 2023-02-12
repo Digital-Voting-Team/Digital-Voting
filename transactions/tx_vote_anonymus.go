@@ -1,21 +1,24 @@
 package transactions
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
-type RingSignature string
-
-type txVoteAnonymous struct {
-	txType     uint8
-	prevTxHash [256]byte
-	answer     uint8
-	Signature  RingSignature
-	nonce      uint32
+type TxVoteAnonymous struct {
+	Answer    uint8         `json:"answer"`
+	Signature RingSignature `json:"signature"`
 }
 
-func newTxVoteAnonymous(txType uint8, prevTxHash [256]byte, answer uint8, nonce uint32) *txVoteAnonymous {
-	return &txVoteAnonymous{txType: txType, prevTxHash: prevTxHash, answer: answer, nonce: nonce}
+func NewTxVoteAnonymous(Answer uint8) *TxVoteAnonymous {
+	return &TxVoteAnonymous{Answer: Answer}
 }
 
-func (tx *txVoteAnonymous) GetStringToSign() string {
-	return fmt.Sprintf("%d, %v, %d, %d", tx.txType, tx.prevTxHash, tx.answer, tx.nonce)
+func (tx *TxVoteAnonymous) GetStringToSign() string {
+	return fmt.Sprintf("%d", tx.Answer)
+}
+
+func (tx *TxVoteAnonymous) String() string {
+	str, _ := json.Marshal(tx)
+	return string(str)
 }
