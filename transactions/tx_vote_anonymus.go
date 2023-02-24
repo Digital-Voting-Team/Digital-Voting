@@ -7,8 +7,11 @@ import (
 )
 
 type TxVoteAnonymous struct {
-	Answer    uint8                    `json:"answer"`
-	Signature signatures.RingSignature `json:"signature"`
+	TxType        uint8                    `json:"tx_type"`
+	Answer        uint8                    `json:"answer"`
+	Data          []byte                   `json:"data"`
+	Nonce         uint32                   `json:"nonce"`
+	RingSignature signatures.RingSignature `json:"ring_signature"`
 }
 
 func NewTxVoteAnonymous(Answer uint8) *TxVoteAnonymous {
@@ -16,7 +19,7 @@ func NewTxVoteAnonymous(Answer uint8) *TxVoteAnonymous {
 }
 
 func (tx *TxVoteAnonymous) GetStringToSign() string {
-	return fmt.Sprintf("%d", tx.Answer)
+	return fmt.Sprintf("%d, %d, %v, %d", tx.TxType, tx.Answer, tx.Data, tx.Nonce)
 }
 
 func (tx *TxVoteAnonymous) String() string {

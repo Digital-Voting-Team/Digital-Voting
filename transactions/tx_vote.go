@@ -1,23 +1,21 @@
 package transactions
 
 import (
-	signatures "digital-voting/signature/signatures/single_signature"
 	"encoding/json"
 	"fmt"
 )
 
 type TxVote struct {
-	Answer    uint8                      `json:"answer"`
-	Signature signatures.SingleSignature `json:"signature"`
-	PublicKey [33]byte                   `json:"public_key"`
+	VotingLink [32]byte `json:"voting_link"`
+	Answer     uint8    `json:"answer"`
 }
 
-func NewTxVote(Answer uint8) *TxVote {
-	return &TxVote{Answer: Answer}
+func NewTxVote(VotingLink [32]byte, Answer uint8) *TxVote {
+	return &TxVote{VotingLink: VotingLink, Answer: Answer}
 }
 
 func (tx *TxVote) GetStringToSign() string {
-	return fmt.Sprintf("%d", tx.Answer)
+	return fmt.Sprintf("%v, %d", tx.VotingLink, tx.Answer)
 }
 
 func (tx *TxVote) String() string {
