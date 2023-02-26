@@ -35,7 +35,7 @@ func (p *Point) String() string {
 }
 
 func (p *Point) Eq(other *Point) bool {
-	return p.X == other.X && p.X == other.Y
+	return p.X.Cmp(other.X) == 0 && p.Y.Cmp(other.Y) == 0
 }
 
 func (p *Point) Neg() *Point {
