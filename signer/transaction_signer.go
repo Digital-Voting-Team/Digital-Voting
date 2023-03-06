@@ -20,20 +20,25 @@ func NewTransactionSigner() *TransactionSigner {
 
 func (ts *TransactionSigner) SignTransaction(keyPair *keys.KeyPair, transaction *transactions.Transaction) {
 	privateKey := keyPair.GetPrivateKey()
-	messageToSign := transaction.GetStringToSign()
+	messageToSign := transaction.GetHash()
 
 	signature := ts.TxSigner.Sign(privateKey, messageToSign)
-	transaction.Signature = *signature
-	transaction.PublicKey = *keyPair.GetPublicKey()
+	transaction.Sign(keyPair.PublicToBytes(), signature.SignatureToBytes())
 }
 
 func (ts *TransactionSigner) SignTransactionAnonymous(keyPair *keys.KeyPair, publicKeys []*curve.Point, s int, transaction *transactions.TxVoteAnonymous) {
-	messageToSign := transaction.GetStringToSign()
+	messageToSign := transaction.GetHash()
 
 	rSignature, err := ts.TxSignerAnonymous.Sign(messageToSign, keyPair, publicKeys, s)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	transaction.RingSignature = *rSignature
+	pKeysData := make([][33]byte, len(publicKeys))
+	for i := 0; i < len(pKeysData); i++ {
+		pKeysData[i] = publicKeys[i].PointToBytes()
+	}
+
+	rSigData, keyImage := rSignature.SignatureToBytes()
+	transaction.Sign(pKeysData, rSigData, keyImage)
 }
