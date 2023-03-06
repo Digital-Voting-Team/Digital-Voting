@@ -31,6 +31,37 @@ type RingSignature struct {
 	RList    []*big.Int    `json:"r_list"`
 }
 
+func (rs *RingSignature) SignatureToBytes() ([][65]byte, [33]byte) {
+	// result[i][0] -> version
+	// result[i][1:32] -> CList[i]
+	// result[i][32:] -> RList[i]
+
+	result := make([][65]byte, len(rs.CList))
+
+	for i := 0; i < len(result); i++ {
+		result[i][0] = '0'
+		copy(result[i][1:32], rs.CList[i].Bytes())
+		copy(result[i][32:], rs.RList[i].Bytes())
+	}
+	return result, rs.KeyImage.PointToBytes()
+}
+
+func BytesToSignature(data [][65]byte, keyImage [33]byte) *RingSignature {
+	rs := &RingSignature{
+		KeyImage: curve2.BytesToPoint(keyImage, curve2.NewCurve25519()),
+		CList:    []*big.Int{},
+		RList:    []*big.Int{},
+	}
+
+	for i := 0; i < len(data); i++ {
+		//version := data[0]
+		rs.CList = append(rs.CList, new(big.Int).SetBytes(data[i][1:32]))
+		rs.RList = append(rs.RList, new(big.Int).SetBytes(data[i][32:]))
+	}
+
+	return rs
+}
+
 func (ec *ECDSA_RS) Sign(message string, keyPair keys.KP, publicKeys []*curve2.Point, s int) (*RingSignature, error) {
 	// Define the size of the ring of public keys that will be used in signing
 	numberOfPKeys := len(publicKeys)

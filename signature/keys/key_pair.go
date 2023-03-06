@@ -33,6 +33,18 @@ type KeyPair struct {
 	curve      curve.ICurve
 }
 
+func (kp *KeyPair) PublicToBytes() [33]byte {
+	if kp.publicKey == nil {
+		panic("not existing public key")
+	}
+
+	return kp.curve.MarshalCompressed(kp.publicKey)
+}
+
+func (kp *KeyPair) BytesToPublic(data [33]byte) {
+	kp.publicKey = kp.curve.UnmarshalCompressed(data)
+}
+
 // Seed is seed getter.
 func (kp *KeyPair) Seed() string {
 	return kp.seed
