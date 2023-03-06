@@ -37,8 +37,9 @@ func (ss *SingleSignature) SignatureToBytes() [65]byte {
 
 	result := [65]byte{}
 	result[0] = '0'
-	copy(result[1:33], ss.R.Bytes())
-	copy(result[33:], ss.S.Bytes())
+	ss.R.FillBytes(result[1:33])
+	ss.S.FillBytes(result[33:])
+
 	return result
 }
 

@@ -40,8 +40,8 @@ func (rs *RingSignature) SignatureToBytes() ([][65]byte, [33]byte) {
 
 	for i := 0; i < len(result); i++ {
 		result[i][0] = '0'
-		copy(result[i][1:33], rs.CList[i].Bytes())
-		copy(result[i][33:], rs.RList[i].Bytes())
+		rs.CList[i].FillBytes(result[i][1:33])
+		rs.RList[i].FillBytes(result[i][33:])
 	}
 	return result, rs.KeyImage.PointToBytes()
 }
