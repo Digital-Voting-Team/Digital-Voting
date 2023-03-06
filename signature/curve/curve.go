@@ -373,15 +373,16 @@ func (mc *MontgomeryCurve) UnmarshalCompressed(data [33]byte) (point *Point) {
 	}
 
 	x := new(big.Int).SetBytes(data[1:])
-	p := mc.P
 
 	y := mc.ComputeY(x)
-	y = y.ModSqrt(y, p)
+	y.ModSqrt(y, mc.P)
+
 	if y == nil {
 		return result
 	}
+
 	if byte(y.Bit(0)) != data[0]&1 {
-		y.Neg(y).Mod(y, p)
+		y.Neg(y).Mod(y, mc.P)
 	}
 
 	result.X = x
