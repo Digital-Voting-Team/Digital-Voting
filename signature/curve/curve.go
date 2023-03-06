@@ -18,12 +18,22 @@ type ICurve interface {
 	NegPoint(P *Point) (*Point, error)
 	ComputeY(x *big.Int) *big.Int
 	ComputeDeterministicHash(P *Point) *Point
+	MarshalCompressed(point *Point) [33]byte
+	UnmarshalCompressed(data [33]byte) (point *Point)
 }
 
 type Point struct {
 	X     *big.Int
 	Y     *big.Int
 	Curve ICurve
+}
+
+func (p *Point) PointToBytes() [33]byte {
+	return p.Curve.MarshalCompressed(p)
+}
+
+func BytesToPoint(data [33]byte, curve ICurve) *Point {
+	return curve.UnmarshalCompressed(data)
 }
 
 func (p *Point) IsAtInfinity() bool {
@@ -206,6 +216,20 @@ func (c *Curve) ComputeDeterministicHash(P *Point) *Point {
 	panic("should not be called")
 }
 
+func (c *Curve) MarshalCompressed(point *Point) [33]byte {
+	if c.Name == "Curve25519" {
+		return c.ConvertToMontgomeryCurve().MarshalCompressed(point)
+	}
+	panic("should not be called")
+}
+
+func (c *Curve) UnmarshalCompressed(data [33]byte) (point *Point) {
+	if c.Name == "Curve25519" {
+		return c.ConvertToMontgomeryCurve().UnmarshalCompressed(data)
+	}
+	panic("should not be called")
+}
+
 func (c *Curve) ConvertToMontgomeryCurve() *MontgomeryCurve {
 	return &MontgomeryCurve{
 		*c,
@@ -330,4 +354,37 @@ func NewCurve25519() *MontgomeryCurve {
 			GY:   gy,
 		},
 	}
+}
+
+func (mc *MontgomeryCurve) MarshalCompressed(point *Point) [33]byte {
+	//TODO think of different lengths
+	compressed := [33]byte{}
+	compressed[0] = byte(point.Y.Bit(0)) | 2
+	point.X.FillBytes(compressed[1:])
+	return compressed
+}
+
+func (mc *MontgomeryCurve) UnmarshalCompressed(data [33]byte) (point *Point) {
+	//TODO think of different lengths
+	result := &Point{nil, nil, mc}
+
+	if data[0] != 2 && data[0] != 3 { // compressed form
+		return result
+	}
+
+	x := new(big.Int).SetBytes(data[1:])
+	p := mc.P
+
+	y := mc.ComputeY(x)
+	y = y.ModSqrt(y, p)
+	if y == nil {
+		return result
+	}
+	if byte(y.Bit(0)) != data[0]&1 {
+		y.Neg(y).Mod(y, p)
+	}
+
+	result.X = x
+	result.Y = y
+	return result
 }
