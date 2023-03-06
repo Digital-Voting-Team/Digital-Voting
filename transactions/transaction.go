@@ -1,8 +1,8 @@
 package transactions
 
 import (
-	"digital-voting/signature/curve"
-	signatures "digital-voting/signature/signatures/single_signature"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,20 +10,34 @@ import (
 )
 
 type Transaction struct {
-	TxType    uint8                      `json:"tx_type"`
-	TxBody    TransactionSpecific        `json:"tx_body"`
-	Data      []byte                     `json:"data"`
-	Nonce     uint32                     `json:"nonce"`
-	Signature signatures.SingleSignature `json:"signature"`
-	PublicKey curve.Point                `json:"public_key"`
+	TxType    uint8               `json:"tx_type"`
+	TxBody    TransactionSpecific `json:"tx_body"`
+	Data      []byte              `json:"data"`
+	Nonce     uint32              `json:"nonce"`
+	Signature [65]byte            `json:"signature"`
+	PublicKey [33]byte            `json:"public_key"`
+}
+
+func (tx *Transaction) Sign(publicKey [33]byte, signature [65]byte) {
+	tx.Signature = signature
+	tx.PublicKey = publicKey
 }
 
 func NewTransaction(txType uint8, txBody TransactionSpecific) *Transaction {
 	return &Transaction{TxType: txType, TxBody: txBody, Nonce: uint32(rand.Int())}
 }
 
-func (tx *Transaction) GetStringToSign() string {
-	return fmt.Sprintf("%d, %s, %v, %d", tx.TxType, tx.TxBody.GetStringToSign(), tx.Data, tx.Nonce)
+func (tx *Transaction) GetHash() string {
+	hasher := sha256.New()
+
+	bytes := []byte(fmt.Sprintf("%d, %s, %v, %d", tx.TxType, tx.TxBody.GetStringToSign(), tx.Data, tx.Nonce))
+	hasher.Write(bytes)
+	bytes = hasher.Sum(nil)
+
+	hasher.Reset()
+	hasher.Write(bytes)
+
+	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 }
 
 func (tx *Transaction) String() string {
