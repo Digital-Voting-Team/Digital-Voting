@@ -135,18 +135,9 @@ func (mc *MontgomeryCurve) UnmarshalCompressed(data [33]byte) (point *Point) {
 	// TODO: think of different lengths
 	result := &Point{nil, nil, mc}
 
-	if data[0] != 2 && data[0] != 3 { // compressed form
-		return result
-	}
-
 	x := new(big.Int).SetBytes(data[1:])
 
 	y := mc.ComputeY(x)
-	y.ModSqrt(y, mc.P)
-
-	if y == nil {
-		return result
-	}
 
 	if byte(y.Bit(0)) != data[0]&1 {
 		y.Neg(y).Mod(y, mc.P)
