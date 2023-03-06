@@ -184,3 +184,127 @@ func Test_getHash(t *testing.T) {
 		})
 	}
 }
+
+func TestBytesToSignature(t *testing.T) {
+	sign := NewECDSA_RS()
+
+	keyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	if err != nil {
+		log.Panicln(err)
+	}
+	publicKey := keyPair.GetPublicKey()
+
+	var publicKeys []*curve2.Point
+	publicKeys = append(publicKeys, publicKey)
+
+	for i := 0; i < 5; i++ {
+		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+		if err != nil {
+			log.Panicln(err)
+		}
+		publicKeys = append(publicKeys, tempKeyPair.GetPublicKey())
+	}
+	message := "1"
+
+	signature, _ := sign.Sign(message, keyPair, publicKeys, 0)
+	sigBytes, image := signature.SignatureToBytes()
+
+	signature1, _ := sign.Sign(message+"1", keyPair, publicKeys, 0)
+	sigBytes1, image1 := signature1.SignatureToBytes()
+
+	type args struct {
+		data     [][65]byte
+		keyImage [33]byte
+	}
+	tests := []struct {
+		name     string
+		args     args
+		want     RingSignature
+		wantBool bool
+	}{
+		{
+			name: "Correct conversion from bytes",
+			args: args{
+				data:     sigBytes,
+				keyImage: image,
+			},
+			want:     *signature,
+			wantBool: true,
+		},
+		{
+			name: "Incorrect conversion from bytes",
+			args: args{
+				data:     sigBytes1,
+				keyImage: image1,
+			},
+			want:     *signature,
+			wantBool: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := BytesToSignature(tt.args.data, tt.args.keyImage); tt.wantBool && !reflect.DeepEqual(*got, tt.want) {
+				t.Errorf("BytesToSignature() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSignatureToBytes(t *testing.T) {
+	sign := NewECDSA_RS()
+
+	keyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	if err != nil {
+		log.Panicln(err)
+	}
+	publicKey := keyPair.GetPublicKey()
+
+	var publicKeys []*curve2.Point
+	publicKeys = append(publicKeys, publicKey)
+
+	for i := 0; i < 5; i++ {
+		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+		if err != nil {
+			log.Panicln(err)
+		}
+		publicKeys = append(publicKeys, tempKeyPair.GetPublicKey())
+	}
+	message := "1"
+
+	signature, _ := sign.Sign(message, keyPair, publicKeys, 0)
+	sigBytes, image := signature.SignatureToBytes()
+
+	signature1, _ := sign.Sign(message+"1", keyPair, publicKeys, 0)
+	sigBytes1, image1 := signature1.SignatureToBytes()
+
+	tests := []struct {
+		name     string
+		want     [][65]byte
+		want1    [33]byte
+		wantBool bool
+	}{
+		{
+			name:     "Correct conversion to bytes",
+			want:     sigBytes,
+			want1:    image,
+			wantBool: true,
+		},
+		{
+			name:     "Incorrect conversion to bytes",
+			want:     sigBytes1,
+			want1:    image1,
+			wantBool: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := signature.SignatureToBytes()
+			if tt.wantBool && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SignatureToBytes() got = %v, want %v", got, tt.want)
+			}
+			if tt.wantBool && !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("SignatureToBytes() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}

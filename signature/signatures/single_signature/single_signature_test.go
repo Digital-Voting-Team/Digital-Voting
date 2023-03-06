@@ -6,6 +6,7 @@ import (
 	"digital-voting/signature/keys"
 	"log"
 	"math/big"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -131,6 +132,84 @@ func TestVerify(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := sign.Verify(tt.args.publicKey, tt.args.message, tt.args.signature); got != tt.want {
 				t.Errorf("Verify() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBytesToSignature(t *testing.T) {
+	sign := NewECDSA()
+	keyPair, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	message := "1"
+
+	signature := sign.Sign(keyPair.GetPrivateKey(), message)
+	sigBytes := signature.SignatureToBytes()
+
+	signature1 := sign.Sign(keyPair.GetPrivateKey(), message+"1")
+
+	type args struct {
+		data [65]byte
+	}
+	tests := []struct {
+		name     string
+		args     args
+		want     SingleSignature
+		wantBool bool
+	}{
+		{
+			name: "Correct conversion from bytes",
+			args: args{
+				sigBytes,
+			},
+			want:     *signature,
+			wantBool: true,
+		},
+		{
+			name: "Incorrect conversion from bytes",
+			args: args{
+				sigBytes,
+			},
+			want:     *signature1,
+			wantBool: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := BytesToSignature(tt.args.data); tt.wantBool && !reflect.DeepEqual(*got, tt.want) {
+				t.Errorf("BytesToSignature() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSignatureToBytes(t *testing.T) {
+	sign := NewECDSA()
+	keyPair, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	message := "1"
+
+	signature := sign.Sign(keyPair.GetPrivateKey(), message)
+	sigBytes := signature.SignatureToBytes()
+
+	tests := []struct {
+		name     string
+		want     [65]byte
+		wantBool bool
+	}{
+		{
+			name:     "Correct conversion to bytes",
+			want:     sigBytes,
+			wantBool: true,
+		},
+		{
+			name:     "Incorrect conversion to bytes",
+			want:     [65]byte{12, 10, 11},
+			wantBool: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := signature.SignatureToBytes(); tt.wantBool && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SignatureToBytes() = %v, want %v", got, tt.want)
 			}
 		})
 	}
