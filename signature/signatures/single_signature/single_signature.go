@@ -37,15 +37,15 @@ func (ss *SingleSignature) SignatureToBytes() [65]byte {
 
 	result := [65]byte{}
 	result[0] = '0'
-	copy(result[1:32], ss.R.Bytes())
-	copy(result[32:], ss.S.Bytes())
+	copy(result[1:33], ss.R.Bytes())
+	copy(result[33:], ss.S.Bytes())
 	return result
 }
 
 func BytesToSignature(data [65]byte) *SingleSignature {
 	//version := data[0]
-	rInt := new(big.Int).SetBytes(data[1:32])
-	sInt := new(big.Int).SetBytes(data[32:])
+	rInt := new(big.Int).SetBytes(data[1:33])
+	sInt := new(big.Int).SetBytes(data[33:])
 	return &SingleSignature{R: rInt, S: sInt}
 }
 
