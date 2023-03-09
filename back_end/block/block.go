@@ -17,6 +17,10 @@ func (b *Block) Sign(publicKey [33]byte, signature [65]byte) {
 	b.Witness.addSignature(publicKey, signature)
 }
 
+func (b *Block) AddMerkleRoot(merkleRoot [32]byte) {
+	b.Header.MerkleRoot = merkleRoot
+}
+
 func (b *Block) GetHash() string {
 	hasher := sha256.New()
 

@@ -1,12 +1,11 @@
 package block
 
-type transaction interface {
-}
+import "digital-voting/transaction"
 
 type Body struct {
-	Transactions []transaction `json:"transactions"`
+	Transactions []transaction.ITransaction `json:"transaction"`
 }
 
-func (b *Body) AddTransaction(myTransaction transaction) {
-	b.Transactions = append(b.Transactions, myTransaction)
+func (b *Body) AddTransaction(transaction transaction.ITransaction) {
+	b.Transactions = append(b.Transactions, transaction)
 }
