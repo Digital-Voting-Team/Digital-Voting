@@ -1,8 +1,8 @@
-package transactions
+package transaction_specific
 
 import (
-	"encoding/json"
 	"fmt"
+	"reflect"
 )
 
 type TxGroupCreation struct {
@@ -11,8 +11,11 @@ type TxGroupCreation struct {
 	MembersPublicKeys [][33]byte `json:"members_public_keys"`
 }
 
-func NewTxGroupCreation(GroupIdentifier [33]byte, GroupName [256]byte, MembersPublicKeys ...[33]byte) *TxGroupCreation {
-	return &TxGroupCreation{GroupIdentifier: GroupIdentifier, GroupName: GroupName, MembersPublicKeys: MembersPublicKeys}
+func NewTxGroupCreation(groupIdentifier [33]byte, groupName string, membersPublicKeys ...[33]byte) *TxGroupCreation {
+	grpName := [256]byte{}
+	copy(grpName[:], groupName)
+
+	return &TxGroupCreation{GroupIdentifier: groupIdentifier, GroupName: grpName, MembersPublicKeys: membersPublicKeys}
 }
 
 func (tx *TxGroupCreation) AddGroupMember(publicKey [33]byte) {
@@ -33,7 +36,8 @@ func (tx *TxGroupCreation) GetStringToSign() string {
 	return fmt.Sprintf("%v, %v, %v", tx.GroupIdentifier, tx.GroupName, tx.MembersPublicKeys)
 }
 
-func (tx *TxGroupCreation) String() string {
-	str, _ := json.Marshal(tx)
-	return string(str)
+func (tx *TxGroupCreation) IsEqual(otherTransaction *TxGroupCreation) bool {
+	return tx.GroupIdentifier == otherTransaction.GroupIdentifier &&
+		tx.GroupName == otherTransaction.GroupName &&
+		reflect.DeepEqual(tx.MembersPublicKeys, otherTransaction.MembersPublicKeys)
 }

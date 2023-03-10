@@ -5,7 +5,8 @@ import (
 	"digital-voting/signature/keys"
 	ringSignature "digital-voting/signature/signatures/ring_signature"
 	singleSignature "digital-voting/signature/signatures/single_signature"
-	"digital-voting/transactions"
+	"digital-voting/transaction"
+	"digital-voting/transaction/transaction_specific"
 	"log"
 )
 
@@ -18,7 +19,7 @@ func NewTransactionSigner() *TransactionSigner {
 	return &TransactionSigner{TxSigner: singleSignature.NewECDSA(), TxSignerAnonymous: ringSignature.NewECDSA_RS()}
 }
 
-func (ts *TransactionSigner) SignTransaction(keyPair *keys.KeyPair, transaction *transactions.Transaction) {
+func (ts *TransactionSigner) SignTransaction(keyPair *keys.KeyPair, transaction *transaction.Transaction) {
 	privateKey := keyPair.GetPrivateKey()
 	messageToSign := transaction.GetHash()
 
@@ -26,7 +27,7 @@ func (ts *TransactionSigner) SignTransaction(keyPair *keys.KeyPair, transaction 
 	transaction.Sign(keyPair.PublicToBytes(), signature.SignatureToBytes())
 }
 
-func (ts *TransactionSigner) SignTransactionAnonymous(keyPair *keys.KeyPair, publicKeys []*curve.Point, s int, transaction *transactions.TxVoteAnonymous) {
+func (ts *TransactionSigner) SignTransactionAnonymous(keyPair *keys.KeyPair, publicKeys []*curve.Point, s int, transaction *transaction_specific.TxVoteAnonymous) {
 	messageToSign := transaction.GetHash()
 
 	rSignature, err := ts.TxSignerAnonymous.Sign(messageToSign, keyPair, publicKeys, s)
