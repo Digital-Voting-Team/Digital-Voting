@@ -11,11 +11,11 @@ type IdentityProvider struct {
 type PubKeyType int
 
 const (
-	USER PubKeyType = iota
-	GROUP_IDENTIFIER
-	REGISTRATION_ADMIN
-	VOTING_CREATOR_ADMIN
-	VALIDATOR
+	User PubKeyType = iota
+	GroupIdentifier
+	RegistrationAdmin
+	VotingCreatorAdmin
+	Validator
 )
 
 func contains(l [][33]byte, item [33]byte) bool {
@@ -29,23 +29,23 @@ func contains(l [][33]byte, item [33]byte) bool {
 
 func (ip *IdentityProvider) AddPubKey(publicKey [33]byte, keyType PubKeyType) {
 	switch keyType {
-	case USER:
+	case User:
 		if !contains(ip.UserPubKeys, publicKey) {
 			ip.UserPubKeys = append(ip.UserPubKeys, publicKey)
 		}
-	case GROUP_IDENTIFIER:
+	case GroupIdentifier:
 		if !contains(ip.GroupIdentifiers, publicKey) {
 			ip.GroupIdentifiers = append(ip.GroupIdentifiers, publicKey)
 		}
-	case REGISTRATION_ADMIN:
+	case RegistrationAdmin:
 		if !contains(ip.RegistrationAdminPubKeys, publicKey) {
 			ip.RegistrationAdminPubKeys = append(ip.RegistrationAdminPubKeys, publicKey)
 		}
-	case VOTING_CREATOR_ADMIN:
+	case VotingCreatorAdmin:
 		if !contains(ip.VotingCreatorAdminPubKeys, publicKey) {
 			ip.VotingCreatorAdminPubKeys = append(ip.VotingCreatorAdminPubKeys, publicKey)
 		}
-	case VALIDATOR:
+	case Validator:
 		if !contains(ip.ValidatorPubKeys, publicKey) {
 			ip.ValidatorPubKeys = append(ip.ValidatorPubKeys, publicKey)
 		}
@@ -54,15 +54,15 @@ func (ip *IdentityProvider) AddPubKey(publicKey [33]byte, keyType PubKeyType) {
 
 func (ip *IdentityProvider) CheckPubKeyPresence(publicKey [33]byte, keyType PubKeyType) bool {
 	switch keyType {
-	case USER:
+	case User:
 		return contains(ip.UserPubKeys, publicKey)
-	case GROUP_IDENTIFIER:
+	case GroupIdentifier:
 		return contains(ip.GroupIdentifiers, publicKey)
-	case REGISTRATION_ADMIN:
+	case RegistrationAdmin:
 		return contains(ip.RegistrationAdminPubKeys, publicKey)
-	case VOTING_CREATOR_ADMIN:
+	case VotingCreatorAdmin:
 		return contains(ip.VotingCreatorAdminPubKeys, publicKey)
-	case VALIDATOR:
+	case Validator:
 		return contains(ip.ValidatorPubKeys, publicKey)
 	default:
 		return false
@@ -80,15 +80,15 @@ func remove(l [][33]byte, item [33]byte) [][33]byte {
 
 func (ip *IdentityProvider) RemovePubKey(publicKey [33]byte, keyType PubKeyType) {
 	switch keyType {
-	case USER:
+	case User:
 		remove(ip.UserPubKeys, publicKey)
-	case GROUP_IDENTIFIER:
+	case GroupIdentifier:
 		remove(ip.GroupIdentifiers, publicKey)
-	case REGISTRATION_ADMIN:
+	case RegistrationAdmin:
 		remove(ip.RegistrationAdminPubKeys, publicKey)
-	case VOTING_CREATOR_ADMIN:
+	case VotingCreatorAdmin:
 		remove(ip.VotingCreatorAdminPubKeys, publicKey)
-	case VALIDATOR:
+	case Validator:
 		remove(ip.ValidatorPubKeys, publicKey)
 	}
 }
