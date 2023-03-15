@@ -18,6 +18,10 @@ type Transaction struct {
 	PublicKey [33]byte `json:"public_key"`
 }
 
+func (tx *Transaction) GetTxType() uint8 {
+	return tx.TxType
+}
+
 func (tx *Transaction) Sign(publicKey [33]byte, signature [65]byte) {
 	tx.Signature = signature
 	tx.PublicKey = publicKey

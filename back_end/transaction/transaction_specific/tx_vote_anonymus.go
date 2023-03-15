@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"reflect"
 )
 
@@ -20,8 +21,12 @@ type TxVoteAnonymous struct {
 	PublicKeys    [][33]byte `json:"public_keys"`
 }
 
+func (tx *TxVoteAnonymous) GetTxType() uint8 {
+	return tx.TxType
+}
+
 func NewTxVoteAnonymous(votingLink [32]byte, answer uint8) *TxVoteAnonymous {
-	return &TxVoteAnonymous{VotingLink: votingLink, Answer: answer}
+	return &TxVoteAnonymous{VotingLink: votingLink, Answer: answer, Nonce: uint32(rand.Int())}
 }
 
 func (tx *TxVoteAnonymous) Sign(publicKeys [][33]byte, signature [][65]byte, keyImage [33]byte) {

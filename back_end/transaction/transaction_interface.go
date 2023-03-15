@@ -4,4 +4,5 @@ package transaction
 type ITransaction interface {
 	HashString() string
 	Print()
+	GetTxType() uint8
 }
