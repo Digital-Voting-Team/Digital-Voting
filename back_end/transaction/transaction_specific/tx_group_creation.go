@@ -1,6 +1,7 @@
 package transaction_specific
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"reflect"
 )
@@ -11,11 +12,21 @@ type TxGroupCreation struct {
 	MembersPublicKeys [][33]byte `json:"members_public_keys"`
 }
 
-func NewTxGroupCreation(groupIdentifier [33]byte, groupName string, membersPublicKeys ...[33]byte) *TxGroupCreation {
+func NewTxGroupCreation(groupName string, membersPublicKeys ...[33]byte) *TxGroupCreation {
 	grpName := [256]byte{}
 	copy(grpName[:], groupName)
 
-	return &TxGroupCreation{GroupIdentifier: groupIdentifier, GroupName: grpName, MembersPublicKeys: membersPublicKeys}
+	hasher := sha256.New()
+
+	groupIdentifier := []byte(fmt.Sprintf("%v, %v", grpName, membersPublicKeys))
+	hasher.Write(groupIdentifier)
+	groupIdentifier = hasher.Sum(nil)
+	grpId := [33]byte{}
+	//version byte
+	//grpId[0] = 0
+	copy(grpId[1:], groupIdentifier)
+
+	return &TxGroupCreation{GroupIdentifier: grpId, GroupName: grpName, MembersPublicKeys: membersPublicKeys}
 }
 
 func (tx *TxGroupCreation) AddGroupMember(publicKey [33]byte) {
