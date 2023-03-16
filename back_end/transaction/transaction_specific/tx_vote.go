@@ -1,6 +1,7 @@
 package transaction_specific
 
 import (
+	"digital-voting/identity_provider"
 	"fmt"
 )
 
@@ -13,11 +14,16 @@ func NewTxVote(votingLink [32]byte, answer uint8) *TxVote {
 	return &TxVote{VotingLink: votingLink, Answer: answer}
 }
 
-func (tx *TxVote) GetStringToSign() string {
+func (tx *TxVote) GetSignatureMessage() string {
 	return fmt.Sprintf("%v, %d", tx.VotingLink, tx.Answer)
 }
 
 func (tx *TxVote) IsEqual(otherTransaction *TxVote) bool {
 	return tx.VotingLink == otherTransaction.VotingLink &&
 		tx.Answer == otherTransaction.Answer
+}
+
+func (tx *TxVote) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+	// TODO: add a way of getting voting by its link to check connected data
+	return true
 }

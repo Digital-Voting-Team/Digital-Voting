@@ -2,6 +2,8 @@ package transaction
 
 import (
 	"crypto/sha256"
+	"digital-voting/identity_provider"
+	singleSignature "digital-voting/signature/signatures/single_signature"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -31,10 +33,10 @@ func NewTransaction(txType uint8, txBody TxBody) *Transaction {
 	return &Transaction{TxType: txType, TxBody: txBody, Nonce: uint32(rand.Int())}
 }
 
-func (tx *Transaction) GetHash() string {
+func (tx *Transaction) GetSignatureMessage() string {
 	hasher := sha256.New()
 
-	bytes := []byte(fmt.Sprintf("%d, %s, %v, %d", tx.TxType, tx.TxBody.GetStringToSign(), tx.Data, tx.Nonce))
+	bytes := []byte(fmt.Sprintf("%d, %s, %v, %d", tx.TxType, tx.TxBody.GetSignatureMessage(), tx.Data, tx.Nonce))
 	hasher.Write(bytes)
 	bytes = hasher.Sum(nil)
 
@@ -53,7 +55,7 @@ func (tx *Transaction) Print() {
 	log.Println(tx)
 }
 
-func (tx *Transaction) HashString() string {
+func (tx *Transaction) GetHash() string {
 	hasher := sha256.New()
 
 	bytes := []byte(tx.String())
@@ -72,4 +74,18 @@ func (tx *Transaction) IsEqual(otherTransaction *Transaction) bool {
 		tx.TxBody == otherTransaction.TxBody &&
 		tx.Signature == otherTransaction.Signature &&
 		tx.PublicKey == otherTransaction.PublicKey
+}
+
+func (tx *Transaction) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+	if !tx.TxBody.Validate(identityProvider) {
+		return false
+	}
+
+	// TODO: think of passing this instead of creating
+	ecdsa := singleSignature.NewECDSA()
+	return ecdsa.VerifyBytes(
+		tx.GetSignatureMessage(),
+		tx.PublicKey,
+		tx.Signature,
+	)
 }

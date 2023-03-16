@@ -2,6 +2,7 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
+	"digital-voting/identity_provider"
 	"fmt"
 	"reflect"
 )
@@ -43,7 +44,7 @@ func (tx *TxGroupCreation) RemoveGroupMember(publicKey [33]byte) {
 	}
 }
 
-func (tx *TxGroupCreation) GetStringToSign() string {
+func (tx *TxGroupCreation) GetSignatureMessage() string {
 	return fmt.Sprintf("%v, %v, %v", tx.GroupIdentifier, tx.GroupName, tx.MembersPublicKeys)
 }
 
@@ -51,4 +52,16 @@ func (tx *TxGroupCreation) IsEqual(otherTransaction *TxGroupCreation) bool {
 	return tx.GroupIdentifier == otherTransaction.GroupIdentifier &&
 		tx.GroupName == otherTransaction.GroupName &&
 		reflect.DeepEqual(tx.MembersPublicKeys, otherTransaction.MembersPublicKeys)
+}
+
+func (tx *TxGroupCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+	if identityProvider.CheckPubKeyPresence(tx.GroupIdentifier, identity_provider.GroupIdentifier) {
+		return false
+	}
+	for _, pubKey := range tx.MembersPublicKeys {
+		if !identityProvider.CheckPubKeyPresence(pubKey, identity_provider.User) {
+			return false
+		}
+	}
+	return true
 }

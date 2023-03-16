@@ -2,6 +2,8 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
+	"digital-voting/identity_provider"
+	ringSignature "digital-voting/signature/signatures/ring_signature"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -35,7 +37,7 @@ func (tx *TxVoteAnonymous) Sign(publicKeys [][33]byte, signature [][65]byte, key
 	tx.KeyImage = keyImage
 }
 
-func (tx *TxVoteAnonymous) GetHash() string {
+func (tx *TxVoteAnonymous) GetSignatureMessage() string {
 	hasher := sha256.New()
 
 	bytes := []byte(fmt.Sprintf("%d, %v, %d, %v, %d", tx.TxType, tx.VotingLink, tx.Answer, tx.Data, tx.Nonce))
@@ -57,7 +59,7 @@ func (tx *TxVoteAnonymous) Print() {
 	log.Println(tx)
 }
 
-func (tx *TxVoteAnonymous) HashString() string {
+func (tx *TxVoteAnonymous) GetHash() string {
 	hasher := sha256.New()
 
 	bytes := []byte(tx.String())
@@ -78,4 +80,17 @@ func (tx *TxVoteAnonymous) IsEqual(otherTransaction *TxVoteAnonymous) bool {
 		reflect.DeepEqual(tx.RingSignature, otherTransaction.RingSignature) &&
 		tx.KeyImage == otherTransaction.KeyImage &&
 		reflect.DeepEqual(tx.PublicKeys, otherTransaction.PublicKeys)
+}
+
+func (tx *TxVoteAnonymous) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+	// TODO: add a way of getting voting by its link to check connected data
+	for _, pubKey := range tx.PublicKeys {
+		if !identityProvider.CheckPubKeyPresence(pubKey, identity_provider.User) {
+			return false
+		}
+	}
+
+	// TODO: think of passing this instead of creating
+	ecdsaRs := ringSignature.NewECDSA_RS()
+	return ecdsaRs.VerifyBytes(tx.GetSignatureMessage(), tx.PublicKeys, tx.RingSignature, tx.KeyImage)
 }

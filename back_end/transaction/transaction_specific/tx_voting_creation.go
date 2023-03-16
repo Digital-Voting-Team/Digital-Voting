@@ -1,6 +1,7 @@
 package transaction_specific
 
 import (
+	"digital-voting/identity_provider"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -28,7 +29,7 @@ func NewTxVotingCreation(expirationDate time.Time, votingDescription string, ans
 	return &TxVotingCreation{ExpirationDate: expDate, VotingDescription: votingDescr, Answers: ans, Whitelist: whitelist}
 }
 
-func (tx *TxVotingCreation) GetStringToSign() string {
+func (tx *TxVotingCreation) GetSignatureMessage() string {
 	return fmt.Sprintf("%d, %v, %v, %v", tx.ExpirationDate, tx.VotingDescription, tx.Answers, tx.Whitelist)
 }
 
@@ -42,4 +43,14 @@ func (tx *TxVotingCreation) IsEqual(otherTransaction *TxVotingCreation) bool {
 		tx.VotingDescription == otherTransaction.VotingDescription &&
 		reflect.DeepEqual(tx.Answers, otherTransaction.Answers) &&
 		reflect.DeepEqual(tx.Whitelist, otherTransaction.Whitelist)
+}
+
+func (tx *TxVotingCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+	// TODO: think of date validation
+	for _, pubKey := range tx.Whitelist {
+		if !identityProvider.CheckPubKeyPresence(pubKey, identity_provider.User) {
+			return false
+		}
+	}
+	return true
 }

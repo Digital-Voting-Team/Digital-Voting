@@ -10,11 +10,11 @@ type TransactionContent struct {
 }
 
 func (t TransactionContent) CalculateHash() ([]byte, error) {
-	return []byte(t.tx.HashString()), nil
+	return []byte(t.tx.GetHash()), nil
 }
 
 func (t TransactionContent) Equals(other Content) (bool, error) {
-	return t.tx.HashString() == other.(TransactionContent).tx.HashString(), nil
+	return t.tx.GetHash() == other.(TransactionContent).tx.GetHash(), nil
 }
 
 func getMerkleTree(transactions []transaction.ITransaction) *MerkleTree {

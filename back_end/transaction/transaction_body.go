@@ -1,5 +1,8 @@
 package transaction
 
+import "digital-voting/identity_provider"
+
 type TxBody interface {
-	GetStringToSign() string
+	GetSignatureMessage() string
+	Validate(identityProvider *identity_provider.IdentityProvider) bool
 }
