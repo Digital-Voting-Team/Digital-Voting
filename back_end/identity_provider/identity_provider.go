@@ -1,11 +1,11 @@
 package identity_provider
 
 type IdentityProvider struct {
-	UserPubKeys               [][33]byte
-	GroupIdentifiers          [][33]byte
-	RegistrationAdminPubKeys  [][33]byte
-	VotingCreatorAdminPubKeys [][33]byte
-	ValidatorPubKeys          [][33]byte
+	UserPubKeys               map[[33]byte]struct{}
+	GroupIdentifiers          map[[33]byte]struct{}
+	RegistrationAdminPubKeys  map[[33]byte]struct{}
+	VotingCreatorAdminPubKeys map[[33]byte]struct{}
+	ValidatorPubKeys          map[[33]byte]struct{}
 }
 
 type PubKeyType int
@@ -14,40 +14,36 @@ const (
 	User PubKeyType = iota
 	GroupIdentifier
 	RegistrationAdmin
-	VotingCreatorAdmin
+	VotingCreationAdmin
 	Validator
 )
-
-func contains(l [][33]byte, item [33]byte) bool {
-	for _, a := range l {
-		if a == item {
-			return true
-		}
-	}
-	return false
-}
 
 func (ip *IdentityProvider) AddPubKey(publicKey [33]byte, keyType PubKeyType) {
 	switch keyType {
 	case User:
-		if !contains(ip.UserPubKeys, publicKey) {
-			ip.UserPubKeys = append(ip.UserPubKeys, publicKey)
+		_, exists := ip.UserPubKeys[publicKey]
+		if !exists {
+			ip.UserPubKeys[publicKey] = struct{}{}
 		}
 	case GroupIdentifier:
-		if !contains(ip.GroupIdentifiers, publicKey) {
-			ip.GroupIdentifiers = append(ip.GroupIdentifiers, publicKey)
+		_, exists := ip.GroupIdentifiers[publicKey]
+		if !exists {
+			ip.GroupIdentifiers[publicKey] = struct{}{}
 		}
 	case RegistrationAdmin:
-		if !contains(ip.RegistrationAdminPubKeys, publicKey) {
-			ip.RegistrationAdminPubKeys = append(ip.RegistrationAdminPubKeys, publicKey)
+		_, exists := ip.RegistrationAdminPubKeys[publicKey]
+		if !exists {
+			ip.RegistrationAdminPubKeys[publicKey] = struct{}{}
 		}
-	case VotingCreatorAdmin:
-		if !contains(ip.VotingCreatorAdminPubKeys, publicKey) {
-			ip.VotingCreatorAdminPubKeys = append(ip.VotingCreatorAdminPubKeys, publicKey)
+	case VotingCreationAdmin:
+		_, exists := ip.VotingCreatorAdminPubKeys[publicKey]
+		if !exists {
+			ip.VotingCreatorAdminPubKeys[publicKey] = struct{}{}
 		}
 	case Validator:
-		if !contains(ip.ValidatorPubKeys, publicKey) {
-			ip.ValidatorPubKeys = append(ip.ValidatorPubKeys, publicKey)
+		_, exists := ip.ValidatorPubKeys[publicKey]
+		if !exists {
+			ip.ValidatorPubKeys[publicKey] = struct{}{}
 		}
 	}
 }
@@ -55,40 +51,36 @@ func (ip *IdentityProvider) AddPubKey(publicKey [33]byte, keyType PubKeyType) {
 func (ip *IdentityProvider) CheckPubKeyPresence(publicKey [33]byte, keyType PubKeyType) bool {
 	switch keyType {
 	case User:
-		return contains(ip.UserPubKeys, publicKey)
+		_, exists := ip.UserPubKeys[publicKey]
+		return exists
 	case GroupIdentifier:
-		return contains(ip.GroupIdentifiers, publicKey)
+		_, exists := ip.GroupIdentifiers[publicKey]
+		return exists
 	case RegistrationAdmin:
-		return contains(ip.RegistrationAdminPubKeys, publicKey)
-	case VotingCreatorAdmin:
-		return contains(ip.VotingCreatorAdminPubKeys, publicKey)
+		_, exists := ip.RegistrationAdminPubKeys[publicKey]
+		return exists
+	case VotingCreationAdmin:
+		_, exists := ip.VotingCreatorAdminPubKeys[publicKey]
+		return exists
 	case Validator:
-		return contains(ip.ValidatorPubKeys, publicKey)
+		_, exists := ip.ValidatorPubKeys[publicKey]
+		return exists
 	default:
 		return false
 	}
 }
 
-func remove(l [][33]byte, item [33]byte) [][33]byte {
-	for i, other := range l {
-		if other == item {
-			return append(l[:i], l[i+1:]...)
-		}
-	}
-	return l
-}
-
 func (ip *IdentityProvider) RemovePubKey(publicKey [33]byte, keyType PubKeyType) {
 	switch keyType {
 	case User:
-		remove(ip.UserPubKeys, publicKey)
+		delete(ip.UserPubKeys, publicKey)
 	case GroupIdentifier:
-		remove(ip.GroupIdentifiers, publicKey)
+		delete(ip.GroupIdentifiers, publicKey)
 	case RegistrationAdmin:
-		remove(ip.RegistrationAdminPubKeys, publicKey)
-	case VotingCreatorAdmin:
-		remove(ip.VotingCreatorAdminPubKeys, publicKey)
+		delete(ip.RegistrationAdminPubKeys, publicKey)
+	case VotingCreationAdmin:
+		delete(ip.VotingCreatorAdminPubKeys, publicKey)
 	case Validator:
-		remove(ip.ValidatorPubKeys, publicKey)
+		delete(ip.ValidatorPubKeys, publicKey)
 	}
 }
