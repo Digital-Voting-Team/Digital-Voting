@@ -19,6 +19,6 @@ func (bs *BlockSigner) SignBlock(keyPair *keys.KeyPair, block *block.Block) {
 	publicKey := keyPair.GetPublicKey()
 	messageToSign := block.GetHash()
 
-	signature := bs.BlkSigner.Sign(privateKey, messageToSign)
+	signature := bs.BlkSigner.Sign(messageToSign, privateKey)
 	block.Sign(publicKey.PointToBytes(), signature.SignatureToBytes())
 }

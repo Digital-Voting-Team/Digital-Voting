@@ -23,7 +23,7 @@ func (ts *TransactionSigner) SignTransaction(keyPair *keys.KeyPair, transaction 
 	privateKey := keyPair.GetPrivateKey()
 	messageToSign := transaction.GetHash()
 
-	signature := ts.TxSigner.Sign(privateKey, messageToSign)
+	signature := ts.TxSigner.Sign(messageToSign, privateKey)
 	transaction.Sign(keyPair.PublicToBytes(), signature.SignatureToBytes())
 }
 

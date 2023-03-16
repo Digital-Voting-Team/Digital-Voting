@@ -50,7 +50,7 @@ func BytesToSignature(data [65]byte) *SingleSignature {
 	return &SingleSignature{R: rInt, S: sInt}
 }
 
-func (ec *ECDSA) Sign(privateKey *big.Int, message string) *SingleSignature {
+func (ec *ECDSA) Sign(message string, privateKey *big.Int) *SingleSignature {
 	rand.Seed(time.Now().UnixNano())
 	var (
 		r     big.Int
@@ -88,7 +88,14 @@ func (ec *ECDSA) Sign(privateKey *big.Int, message string) *SingleSignature {
 	return &SingleSignature{R: &r, S: &s}
 }
 
-func (ec *ECDSA) Verify(publicKey *curve2.Point, message string, signature *SingleSignature) bool {
+func (ec *ECDSA) VerifyBytes(message string, publicKey [33]byte, signature [65]byte) bool {
+	pubKey := curve2.BytesToPoint(publicKey, ec.Curve)
+	sig := BytesToSignature(signature)
+
+	return ec.Verify(message, pubKey, sig)
+}
+
+func (ec *ECDSA) Verify(message string, publicKey *curve2.Point, signature *SingleSignature) bool {
 	// 1. Verify that r and s are integers in the interval [1, n - 1].
 	if !utils.CheckInterval(signature.R, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) ||
 		!utils.CheckInterval(signature.S, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) {
