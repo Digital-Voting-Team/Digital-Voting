@@ -14,7 +14,7 @@ const (
 	User PubKeyType = iota
 	GroupIdentifier
 	RegistrationAdmin
-	VotingCreatorAdmin
+	VotingCreationAdmin
 	Validator
 )
 
@@ -41,7 +41,7 @@ func (ip *IdentityProvider) AddPubKey(publicKey [33]byte, keyType PubKeyType) {
 		if !contains(ip.RegistrationAdminPubKeys, publicKey) {
 			ip.RegistrationAdminPubKeys = append(ip.RegistrationAdminPubKeys, publicKey)
 		}
-	case VotingCreatorAdmin:
+	case VotingCreationAdmin:
 		if !contains(ip.VotingCreatorAdminPubKeys, publicKey) {
 			ip.VotingCreatorAdminPubKeys = append(ip.VotingCreatorAdminPubKeys, publicKey)
 		}
@@ -60,7 +60,7 @@ func (ip *IdentityProvider) CheckPubKeyPresence(publicKey [33]byte, keyType PubK
 		return contains(ip.GroupIdentifiers, publicKey)
 	case RegistrationAdmin:
 		return contains(ip.RegistrationAdminPubKeys, publicKey)
-	case VotingCreatorAdmin:
+	case VotingCreationAdmin:
 		return contains(ip.VotingCreatorAdminPubKeys, publicKey)
 	case Validator:
 		return contains(ip.ValidatorPubKeys, publicKey)
@@ -86,7 +86,7 @@ func (ip *IdentityProvider) RemovePubKey(publicKey [33]byte, keyType PubKeyType)
 		remove(ip.GroupIdentifiers, publicKey)
 	case RegistrationAdmin:
 		remove(ip.RegistrationAdminPubKeys, publicKey)
-	case VotingCreatorAdmin:
+	case VotingCreationAdmin:
 		remove(ip.VotingCreatorAdminPubKeys, publicKey)
 	case Validator:
 		remove(ip.ValidatorPubKeys, publicKey)
