@@ -45,7 +45,11 @@ func (tx *TxVotingCreation) IsEqual(otherTransaction *TxVotingCreation) bool {
 		reflect.DeepEqual(tx.Whitelist, otherTransaction.Whitelist)
 }
 
-func (tx *TxVotingCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+func (tx *TxVotingCreation) Validate(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
+	if !identityProvider.CheckPubKeyPresence(publicKey, identity_provider.VotingCreationAdmin) {
+		return false
+	}
+
 	// TODO: think of date validation
 	for _, pubKey := range tx.Whitelist {
 		if !identityProvider.CheckPubKeyPresence(pubKey, identity_provider.User) {

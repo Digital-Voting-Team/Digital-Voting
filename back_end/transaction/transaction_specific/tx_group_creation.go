@@ -54,7 +54,11 @@ func (tx *TxGroupCreation) IsEqual(otherTransaction *TxGroupCreation) bool {
 		reflect.DeepEqual(tx.MembersPublicKeys, otherTransaction.MembersPublicKeys)
 }
 
-func (tx *TxGroupCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+func (tx *TxGroupCreation) Validate(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
+	if !identityProvider.CheckPubKeyPresence(publicKey, identity_provider.RegistrationAdmin) {
+		return false
+	}
+
 	if identityProvider.CheckPubKeyPresence(tx.GroupIdentifier, identity_provider.GroupIdentifier) {
 		return false
 	}

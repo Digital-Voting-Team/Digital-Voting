@@ -23,7 +23,11 @@ func (tx *TxVote) IsEqual(otherTransaction *TxVote) bool {
 		tx.Answer == otherTransaction.Answer
 }
 
-func (tx *TxVote) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+func (tx *TxVote) Validate(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
+	if !identityProvider.CheckPubKeyPresence(publicKey, identity_provider.User) {
+		return false
+	}
+
 	// TODO: add a way of getting voting by its link to check connected data
 	return true
 }
