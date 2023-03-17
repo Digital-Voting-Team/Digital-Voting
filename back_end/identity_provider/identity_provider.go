@@ -10,6 +10,15 @@ type IdentityProvider struct {
 
 type PubKeyType int
 
+func NewIdentityProvider() *IdentityProvider {
+	return &IdentityProvider{
+		UserPubKeys:               map[[33]byte]struct{}{},
+		GroupIdentifiers:          map[[33]byte]struct{}{},
+		RegistrationAdminPubKeys:  map[[33]byte]struct{}{},
+		VotingCreatorAdminPubKeys: map[[33]byte]struct{}{},
+	}
+}
+
 const (
 	User PubKeyType = iota
 	GroupIdentifier
