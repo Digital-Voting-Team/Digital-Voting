@@ -69,11 +69,7 @@ func (tx *Transaction) GetHash() string {
 }
 
 func (tx *Transaction) IsEqual(otherTransaction *Transaction) bool {
-	return tx.TxType == otherTransaction.TxType &&
-		tx.Nonce == otherTransaction.Nonce &&
-		tx.TxBody == otherTransaction.TxBody &&
-		tx.Signature == otherTransaction.Signature &&
-		tx.PublicKey == otherTransaction.PublicKey
+	return tx.GetHash() == otherTransaction.GetHash()
 }
 
 func (tx *Transaction) Validate(identityProvider *identity_provider.IdentityProvider) bool {

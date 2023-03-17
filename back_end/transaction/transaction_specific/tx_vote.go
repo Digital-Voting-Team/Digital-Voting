@@ -1,7 +1,10 @@
 package transaction_specific
 
 import (
+	"crypto/sha256"
 	"digital-voting/identity_provider"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 )
 
@@ -18,9 +21,26 @@ func (tx *TxVote) GetSignatureMessage() string {
 	return fmt.Sprintf("%v, %d", tx.VotingLink, tx.Answer)
 }
 
+func (tx *TxVote) String() string {
+	str, _ := json.Marshal(tx)
+	return string(str)
+}
+
+func (tx *TxVote) GetHash() string {
+	hasher := sha256.New()
+
+	bytes := []byte(tx.String())
+	hasher.Write(bytes)
+	bytes = hasher.Sum(nil)
+
+	hasher.Reset()
+	hasher.Write(bytes)
+
+	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+}
+
 func (tx *TxVote) IsEqual(otherTransaction *TxVote) bool {
-	return tx.VotingLink == otherTransaction.VotingLink &&
-		tx.Answer == otherTransaction.Answer
+	return tx.GetHash() == otherTransaction.GetHash()
 }
 
 func (tx *TxVote) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {

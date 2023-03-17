@@ -3,8 +3,9 @@ package transaction_specific
 import (
 	"crypto/sha256"
 	"digital-voting/identity_provider"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"reflect"
 )
 
 type TxGroupCreation struct {
@@ -48,10 +49,26 @@ func (tx *TxGroupCreation) GetSignatureMessage() string {
 	return fmt.Sprintf("%v, %v, %v", tx.GroupIdentifier, tx.GroupName, tx.MembersPublicKeys)
 }
 
+func (tx *TxGroupCreation) String() string {
+	str, _ := json.Marshal(tx)
+	return string(str)
+}
+
+func (tx *TxGroupCreation) GetHash() string {
+	hasher := sha256.New()
+
+	bytes := []byte(tx.String())
+	hasher.Write(bytes)
+	bytes = hasher.Sum(nil)
+
+	hasher.Reset()
+	hasher.Write(bytes)
+
+	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+}
+
 func (tx *TxGroupCreation) IsEqual(otherTransaction *TxGroupCreation) bool {
-	return tx.GroupIdentifier == otherTransaction.GroupIdentifier &&
-		tx.GroupName == otherTransaction.GroupName &&
-		reflect.DeepEqual(tx.MembersPublicKeys, otherTransaction.MembersPublicKeys)
+	return tx.GetHash() == otherTransaction.GetHash()
 }
 
 func (tx *TxGroupCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {

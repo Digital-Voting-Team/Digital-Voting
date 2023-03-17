@@ -1,10 +1,11 @@
 package transaction_specific
 
 import (
+	"crypto/sha256"
 	"digital-voting/identity_provider"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"time"
 )
 
@@ -38,11 +39,21 @@ func (tx *TxVotingCreation) String() string {
 	return string(str)
 }
 
-func (tx *TxVotingCreation) IsEqual(otherTransaction *TxVotingCreation) bool {
-	return tx.ExpirationDate == otherTransaction.ExpirationDate &&
-		tx.VotingDescription == otherTransaction.VotingDescription &&
-		reflect.DeepEqual(tx.Answers, otherTransaction.Answers) &&
-		reflect.DeepEqual(tx.Whitelist, otherTransaction.Whitelist)
+func (tx *TxVotingCreation) GetHash() string {
+	hasher := sha256.New()
+
+	bytes := []byte(tx.String())
+	hasher.Write(bytes)
+	bytes = hasher.Sum(nil)
+
+	hasher.Reset()
+	hasher.Write(bytes)
+
+	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+}
+
+func (tx *TxVotingCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
+	return tx.GetHash() == otherTransaction.GetHash()
 }
 
 func (tx *TxVotingCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {

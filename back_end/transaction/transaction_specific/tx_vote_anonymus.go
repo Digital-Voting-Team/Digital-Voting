@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"reflect"
 )
 
 type TxVoteAnonymous struct {
@@ -73,13 +72,7 @@ func (tx *TxVoteAnonymous) GetHash() string {
 }
 
 func (tx *TxVoteAnonymous) IsEqual(otherTransaction *TxVoteAnonymous) bool {
-	return tx.TxType == otherTransaction.TxType &&
-		tx.Nonce == otherTransaction.Nonce &&
-		tx.VotingLink == otherTransaction.VotingLink &&
-		tx.Answer == otherTransaction.Answer &&
-		reflect.DeepEqual(tx.RingSignature, otherTransaction.RingSignature) &&
-		tx.KeyImage == otherTransaction.KeyImage &&
-		reflect.DeepEqual(tx.PublicKeys, otherTransaction.PublicKeys)
+	return tx.GetHash() == otherTransaction.GetHash()
 }
 
 func (tx *TxVoteAnonymous) Validate(identityProvider *identity_provider.IdentityProvider) bool {

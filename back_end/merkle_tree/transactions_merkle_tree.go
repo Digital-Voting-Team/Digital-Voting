@@ -14,7 +14,7 @@ func (t TransactionContent) CalculateHash() ([]byte, error) {
 }
 
 func (t TransactionContent) Equals(other Content) (bool, error) {
-	return t.tx.GetHash() == other.(TransactionContent).tx.GetHash(), nil
+	return t.tx == other.(TransactionContent).tx, nil
 }
 
 func getMerkleTree(transactions []transaction.ITransaction) *MerkleTree {
