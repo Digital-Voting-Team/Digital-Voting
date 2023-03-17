@@ -54,11 +54,11 @@ func (tx *TxGroupCreation) IsEqual(otherTransaction *TxGroupCreation) bool {
 		reflect.DeepEqual(tx.MembersPublicKeys, otherTransaction.MembersPublicKeys)
 }
 
-func (tx *TxGroupCreation) Validate(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
-	if !identityProvider.CheckPubKeyPresence(publicKey, identity_provider.RegistrationAdmin) {
-		return false
-	}
+func (tx *TxGroupCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
+	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.RegistrationAdmin)
+}
 
+func (tx *TxGroupCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
 	if identityProvider.CheckPubKeyPresence(tx.GroupIdentifier, identity_provider.GroupIdentifier) {
 		return false
 	}

@@ -77,7 +77,7 @@ func (tx *Transaction) IsEqual(otherTransaction *Transaction) bool {
 }
 
 func (tx *Transaction) Validate(identityProvider *identity_provider.IdentityProvider) bool {
-	if !tx.TxBody.Validate(identityProvider, tx.PublicKey) {
+	if !tx.TxBody.Validate(identityProvider) || !tx.TxBody.CheckPublicKeyByRole(identityProvider, tx.PublicKey) {
 		return false
 	}
 

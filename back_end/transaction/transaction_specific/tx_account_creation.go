@@ -23,11 +23,11 @@ func (tx *TxAccountCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
 		tx.NewPublicKey == otherTransaction.NewPublicKey
 }
 
-func (tx *TxAccountCreation) Validate(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
-	if !identityProvider.CheckPubKeyPresence(publicKey, identity_provider.RegistrationAdmin) {
-		return false
-	}
+func (tx *TxAccountCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
+	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.RegistrationAdmin)
+}
 
+func (tx *TxAccountCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
 	// TODO: think of a better way to check
 	return !identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.User) &&
 		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.RegistrationAdmin) &&
