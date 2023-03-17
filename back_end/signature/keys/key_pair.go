@@ -28,9 +28,28 @@ const (
 type KeyPair struct {
 	address    string
 	seed       string
-	PrivateKey *big.Int
+	privateKey *big.Int
 	publicKey  *curve.Point
 	curve      curve.ICurve
+}
+
+func (kp *KeyPair) SetPrivateKey(privateKey *big.Int) {
+	kp.privateKey = privateKey
+}
+
+func (kp *KeyPair) SetPublicKey(publicKey *curve.Point) {
+	kp.publicKey = publicKey
+}
+
+func (kp *KeyPair) BytesToPrivate(privateKey [32]byte) {
+	kp.privateKey = new(big.Int).SetBytes(privateKey[:])
+}
+
+func (kp *KeyPair) PrivateToBytes() [32]byte {
+	result := [32]byte{}
+	kp.privateKey.FillBytes(result[:])
+
+	return result
 }
 
 func (kp *KeyPair) PublicToBytes() [33]byte {
@@ -57,7 +76,7 @@ func (kp *KeyPair) Address() string {
 
 // GetPrivateKey is public key getter.
 func (kp *KeyPair) GetPrivateKey() *big.Int {
-	return kp.PrivateKey
+	return kp.privateKey
 }
 
 // GetPublicKey is public key getter.
@@ -80,11 +99,11 @@ func (kp *KeyPair) FromAddress() (*FromAddress, error) {
 	return newFromAddress(kp.address)
 }
 
-//func sign(signatures, PrivateKey, message []byte) {
-//	if l := len(PrivateKey); l != PrivateKeySize {
+//func sign(signatures, privateKey, message []byte) {
+//	if l := len(privateKey); l != PrivateKeySize {
 //		panic("ed25519: bad private key length: " + strconv.Itoa(l))
 //	}
-//	seed, publicKey := PrivateKey[:SeedSize], PrivateKey[SeedSize:]
+//	seed, publicKey := privateKey[:SeedSize], privateKey[SeedSize:]
 //
 //	h := sha512.Sum512(seed)
 //	s, err := edwards25519.NewScalar().SetBytesWithClamping(h[:32])
@@ -157,7 +176,7 @@ func newKeyPair(seed string, curve curve.ICurve) (*KeyPair, error) {
 		address:    address,
 		seed:       seed,
 		publicKey:  public,
-		PrivateKey: private,
+		privateKey: private,
 		curve:      curve,
 	}, nil
 }
@@ -186,7 +205,7 @@ func newKeyPairFromRawSeed(rawSeed [32]byte, curve curve.ICurve) (*KeyPair, erro
 		address:    address,
 		seed:       seed,
 		publicKey:  public,
-		PrivateKey: private,
+		privateKey: private,
 		curve:      curve,
 	}, nil
 }
@@ -205,7 +224,7 @@ func getPublicKey(d *big.Int, curve curve.ICurve) *curve.Point {
 }
 
 func (kp *KeyPair) GetKeyImage() *curve.Point {
-	pKey := new(big.Int).Set(kp.PrivateKey)
+	pKey := new(big.Int).Set(kp.privateKey)
 
 	keyImage, err := kp.curve.MulPoint(pKey, kp.curve.ComputeDeterministicHash(kp.publicKey))
 	if err != nil {

@@ -62,9 +62,9 @@ func BytesToSignature(data [][65]byte, keyImage [33]byte) *RingSignature {
 	return rs
 }
 
-func (ec *ECDSA_RS) SignBytes(message string, privateKey *big.Int, publicKey [33]byte, publicKeys [][33]byte, s int) (*RingSignature, error) {
+func (ec *ECDSA_RS) SignBytes(message string, privateKey [32]byte, publicKey [33]byte, publicKeys [][33]byte, s int) (*RingSignature, error) {
 	keyPair := new(keys.KeyPair)
-	keyPair.PrivateKey = privateKey
+	keyPair.BytesToPrivate(privateKey)
 	keyPair.BytesToPublic(publicKey)
 
 	pubKeys := make([]*curve2.Point, len(publicKeys))

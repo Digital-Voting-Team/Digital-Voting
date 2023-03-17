@@ -4,6 +4,7 @@ import (
 	crypto "crypto/rand"
 	"crypto/sha1"
 	curve2 "digital-voting/signature/curve"
+	"digital-voting/signature/keys"
 	"digital-voting/signature/signatures/utils"
 	"encoding/hex"
 	"log"
@@ -48,6 +49,13 @@ func BytesToSignature(data [65]byte) *SingleSignature {
 	rInt := new(big.Int).SetBytes(data[1:33])
 	sInt := new(big.Int).SetBytes(data[33:])
 	return &SingleSignature{R: rInt, S: sInt}
+}
+
+func (ec *ECDSA) SignBytes(message string, privateKey [32]byte) *SingleSignature {
+	keyPair := new(keys.KeyPair)
+	keyPair.BytesToPrivate(privateKey)
+
+	return ec.Sign(message, keyPair.GetPrivateKey())
 }
 
 func (ec *ECDSA) Sign(message string, privateKey *big.Int) *SingleSignature {
