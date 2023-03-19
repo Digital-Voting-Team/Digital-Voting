@@ -110,6 +110,14 @@ func TestValidateTransaction(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "Invalid identity provider and/or administrator",
+			args: args{
+				tx:               txVoteAnonymous,
+				identityProvider: identity_provider.NewIdentityProvider(),
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
