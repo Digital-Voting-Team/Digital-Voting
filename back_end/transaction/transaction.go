@@ -36,7 +36,7 @@ func NewTransaction(txType uint8, txBody TxBody) *Transaction {
 func (tx *Transaction) GetSignatureMessage() string {
 	hasher := sha256.New()
 
-	bytes := []byte(fmt.Sprintf("%d, %s, %v, %d", tx.TxType, tx.TxBody.GetSignatureMessage(), tx.Data, tx.Nonce))
+	bytes := []byte(fmt.Sprintf("%d%s%v%d", tx.TxType, tx.TxBody.GetSignatureMessage(), tx.Data, tx.Nonce))
 	hasher.Write(bytes)
 	bytes = hasher.Sum(nil)
 
@@ -55,10 +55,14 @@ func (tx *Transaction) Print() {
 	log.Println(tx)
 }
 
+func (tx *Transaction) GetConcatenation() string {
+	return fmt.Sprintf("%d%s%v%d%v%v", tx.TxType, tx.TxBody.GetSignatureMessage(), tx.Data, tx.Nonce, tx.Signature, tx.PublicKey)
+}
+
 func (tx *Transaction) GetHash() string {
 	hasher := sha256.New()
 
-	bytes := []byte(tx.String())
+	bytes := []byte(tx.GetConcatenation())
 	hasher.Write(bytes)
 	bytes = hasher.Sum(nil)
 

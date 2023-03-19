@@ -31,7 +31,7 @@ func NewTxVotingCreation(expirationDate time.Time, votingDescription string, ans
 }
 
 func (tx *TxVotingCreation) GetSignatureMessage() string {
-	return fmt.Sprintf("%d, %v, %v, %v", tx.ExpirationDate, tx.VotingDescription, tx.Answers, tx.Whitelist)
+	return fmt.Sprintf("%d%v%v%v", tx.ExpirationDate, tx.VotingDescription, tx.Answers, tx.Whitelist)
 }
 
 func (tx *TxVotingCreation) String() string {
@@ -42,7 +42,7 @@ func (tx *TxVotingCreation) String() string {
 func (tx *TxVotingCreation) GetHash() string {
 	hasher := sha256.New()
 
-	bytes := []byte(tx.String())
+	bytes := []byte(tx.GetSignatureMessage())
 	hasher.Write(bytes)
 	bytes = hasher.Sum(nil)
 

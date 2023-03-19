@@ -18,7 +18,7 @@ func NewTxAccCreation(accountType uint8, newPublicKey [33]byte) *TxAccountCreati
 }
 
 func (tx *TxAccountCreation) GetSignatureMessage() string {
-	return fmt.Sprintf("%d, %v", tx.AccountType, tx.NewPublicKey)
+	return fmt.Sprintf("%d%v", tx.AccountType, tx.NewPublicKey)
 }
 
 func (tx *TxAccountCreation) String() string {
@@ -29,7 +29,7 @@ func (tx *TxAccountCreation) String() string {
 func (tx *TxAccountCreation) GetHash() string {
 	hasher := sha256.New()
 
-	bytes := []byte(tx.String())
+	bytes := []byte(tx.GetSignatureMessage())
 	hasher.Write(bytes)
 	bytes = hasher.Sum(nil)
 

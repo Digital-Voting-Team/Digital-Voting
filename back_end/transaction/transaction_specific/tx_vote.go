@@ -18,7 +18,7 @@ func NewTxVote(votingLink [32]byte, answer uint8) *TxVote {
 }
 
 func (tx *TxVote) GetSignatureMessage() string {
-	return fmt.Sprintf("%v, %d", tx.VotingLink, tx.Answer)
+	return fmt.Sprintf("%v%d", tx.VotingLink, tx.Answer)
 }
 
 func (tx *TxVote) String() string {
@@ -29,7 +29,7 @@ func (tx *TxVote) String() string {
 func (tx *TxVote) GetHash() string {
 	hasher := sha256.New()
 
-	bytes := []byte(tx.String())
+	bytes := []byte(tx.GetSignatureMessage())
 	hasher.Write(bytes)
 	bytes = hasher.Sum(nil)
 

@@ -20,7 +20,7 @@ func NewTxGroupCreation(groupName string, membersPublicKeys ...[33]byte) *TxGrou
 
 	hasher := sha256.New()
 
-	groupIdentifier := []byte(fmt.Sprintf("%v, %v", grpName, membersPublicKeys))
+	groupIdentifier := []byte(fmt.Sprintf("%v%v", grpName, membersPublicKeys))
 	hasher.Write(groupIdentifier)
 	groupIdentifier = hasher.Sum(nil)
 	grpId := [33]byte{}
@@ -46,7 +46,7 @@ func (tx *TxGroupCreation) RemoveGroupMember(publicKey [33]byte) {
 }
 
 func (tx *TxGroupCreation) GetSignatureMessage() string {
-	return fmt.Sprintf("%v, %v, %v", tx.GroupIdentifier, tx.GroupName, tx.MembersPublicKeys)
+	return fmt.Sprintf("%v%v%v", tx.GroupIdentifier, tx.GroupName, tx.MembersPublicKeys)
 }
 
 func (tx *TxGroupCreation) String() string {
@@ -57,7 +57,7 @@ func (tx *TxGroupCreation) String() string {
 func (tx *TxGroupCreation) GetHash() string {
 	hasher := sha256.New()
 
-	bytes := []byte(tx.String())
+	bytes := []byte(tx.GetSignatureMessage())
 	hasher.Write(bytes)
 	bytes = hasher.Sum(nil)
 

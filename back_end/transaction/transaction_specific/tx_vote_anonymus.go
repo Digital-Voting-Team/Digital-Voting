@@ -39,7 +39,7 @@ func (tx *TxVoteAnonymous) Sign(publicKeys [][33]byte, signature [][65]byte, key
 func (tx *TxVoteAnonymous) GetSignatureMessage() string {
 	hasher := sha256.New()
 
-	bytes := []byte(fmt.Sprintf("%d, %v, %d, %v, %d", tx.TxType, tx.VotingLink, tx.Answer, tx.Data, tx.Nonce))
+	bytes := []byte(fmt.Sprintf("%d%v%d%v%d", tx.TxType, tx.VotingLink, tx.Answer, tx.Data, tx.Nonce))
 	hasher.Write(bytes)
 	bytes = hasher.Sum(nil)
 
@@ -58,10 +58,14 @@ func (tx *TxVoteAnonymous) Print() {
 	log.Println(tx)
 }
 
+func (tx *TxVoteAnonymous) GetConcatenation() string {
+	return fmt.Sprintf("%d%v%d%v%d%v%v%v", tx.TxType, tx.VotingLink, tx.Answer, tx.Data, tx.Nonce, tx.RingSignature, tx.KeyImage, tx.PublicKeys)
+}
+
 func (tx *TxVoteAnonymous) GetHash() string {
 	hasher := sha256.New()
 
-	bytes := []byte(tx.String())
+	bytes := []byte(tx.GetConcatenation())
 	hasher.Write(bytes)
 	bytes = hasher.Sum(nil)
 
