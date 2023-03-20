@@ -103,6 +103,7 @@ func TestCreateBlock(t *testing.T) {
 	validator := &Validator{
 		KeyPair:          keyPair1,
 		IdentityProvider: identityProvider,
+		BlockSigner:      signer.NewBlockSigner(),
 	}
 	validator.AddToMemPool(txAccountCreation)
 	validator.AddToMemPool(txGroupCreation)

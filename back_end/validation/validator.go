@@ -18,6 +18,7 @@ type Validator struct {
 	ValidatorsAddresses []any
 	MemPool             []transaction.ITransaction
 	IdentityProvider    *identity_provider.IdentityProvider
+	BlockSigner         *signer.BlockSigner
 }
 
 func (v *Validator) isInMemPool(transaction transaction.ITransaction) bool {
@@ -59,8 +60,7 @@ func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
 		Body:   blockBody,
 	}
 
-	blockSigner := signer.NewBlockSigner()
-	blockSigner.SignBlock(v.KeyPair, newBlock)
+	v.BlockSigner.SignBlock(v.KeyPair, newBlock)
 
 	return newBlock
 }
