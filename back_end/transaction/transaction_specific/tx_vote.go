@@ -18,7 +18,7 @@ func NewTxVote(votingLink [32]byte, answer uint8) *TxVote {
 }
 
 func (tx *TxVote) GetSignatureMessage() string {
-	return fmt.Sprintf("%v%d", tx.VotingLink, tx.Answer)
+	return fmt.Sprint(tx.VotingLink, tx.Answer)
 }
 
 func (tx *TxVote) String() string {

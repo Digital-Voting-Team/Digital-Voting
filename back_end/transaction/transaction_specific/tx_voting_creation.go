@@ -31,7 +31,7 @@ func NewTxVotingCreation(expirationDate time.Time, votingDescription string, ans
 }
 
 func (tx *TxVotingCreation) GetSignatureMessage() string {
-	return fmt.Sprintf("%d%v%v%v", tx.ExpirationDate, tx.VotingDescription, tx.Answers, tx.Whitelist)
+	return fmt.Sprint(tx.ExpirationDate, tx.VotingDescription, tx.Answers, tx.Whitelist)
 }
 
 func (tx *TxVotingCreation) String() string {

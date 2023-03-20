@@ -18,7 +18,7 @@ func NewTxAccCreation(accountType uint8, newPublicKey [33]byte) *TxAccountCreati
 }
 
 func (tx *TxAccountCreation) GetSignatureMessage() string {
-	return fmt.Sprintf("%d%v", tx.AccountType, tx.NewPublicKey)
+	return fmt.Sprint(tx.AccountType, tx.NewPublicKey)
 }
 
 func (tx *TxAccountCreation) String() string {

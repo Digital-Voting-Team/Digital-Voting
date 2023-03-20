@@ -46,7 +46,7 @@ func (tx *TxGroupCreation) RemoveGroupMember(publicKey [33]byte) {
 }
 
 func (tx *TxGroupCreation) GetSignatureMessage() string {
-	return fmt.Sprintf("%v%v%v", tx.GroupIdentifier, tx.GroupName, tx.MembersPublicKeys)
+	return fmt.Sprint(tx.GroupIdentifier, tx.GroupName, tx.MembersPublicKeys)
 }
 
 func (tx *TxGroupCreation) String() string {
