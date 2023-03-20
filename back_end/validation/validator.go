@@ -7,6 +7,7 @@ import (
 	"digital-voting/signature/keys"
 	"digital-voting/signer"
 	"digital-voting/transaction"
+	"math"
 	"time"
 )
 
@@ -39,8 +40,10 @@ func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
 	// Validator does not validate its block since it validated all transactions while adding them to MemPool
 
 	// Takes up to 20 transactions from beginning of MemPool and create block body with them
+	maxNumber := 20
+	numberInBlock := int(math.Min(float64(len(v.MemPool)), float64(maxNumber)))
 	blockBody := block.Body{
-		Transactions: v.MemPool[:20],
+		Transactions: v.MemPool[:numberInBlock],
 	}
 
 	// Create block header
