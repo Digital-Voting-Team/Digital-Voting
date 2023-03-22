@@ -16,6 +16,7 @@ func NewIdentityProvider() *IdentityProvider {
 		GroupIdentifiers:          map[[33]byte]struct{}{},
 		RegistrationAdminPubKeys:  map[[33]byte]struct{}{},
 		VotingCreatorAdminPubKeys: map[[33]byte]struct{}{},
+		ValidatorPubKeys:          map[[33]byte]struct{}{},
 	}
 }
 

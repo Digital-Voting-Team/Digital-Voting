@@ -59,10 +59,13 @@ func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
 		Header: blockHeader,
 		Body:   blockBody,
 	}
-
-	v.BlockSigner.SignBlock(v.KeyPair, newBlock)
+	v.SignBlock(newBlock)
 
 	return newBlock
+}
+
+func (v *Validator) SignBlock(block *block.Block) {
+	v.BlockSigner.SignBlock(v.KeyPair, block)
 }
 
 type BlockChain interface {
