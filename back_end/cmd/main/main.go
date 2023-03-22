@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/sha256"
 	"digital-voting/block"
 	"digital-voting/blockchain"
 	ip "digital-voting/identity_provider"
@@ -12,14 +11,13 @@ import (
 	stx "digital-voting/transaction/transaction_specific"
 	"digital-voting/validation"
 	"fmt"
-	"time"
 )
 
 func main() {
 	sign := singleSignature.NewECDSA()
 	identityProvider := ip.NewIdentityProvider()
 
-	validatorKeyPair, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	validatorKeyPair, _ := keys.Random(sign.Curve)
 	identityProvider.AddPubKey(validatorKeyPair.PublicToBytes(), ip.Validator)
 
 	validator := &validation.Validator{
@@ -28,7 +26,7 @@ func main() {
 		BlockSigner:      signer.NewBlockSigner(),
 	}
 
-	adminKeyPair, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	adminKeyPair, _ := keys.Random(sign.Curve)
 	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.VotingCreationAdmin)
 
 	genesisTransaction := tx.NewTransaction(0, stx.NewTxAccCreation(0, adminKeyPair.PublicToBytes()))
