@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
-	"digital-voting/signer"
 	"digital-voting/transaction"
 	"digital-voting/transaction/transaction_specific"
 	"testing"
@@ -13,7 +12,6 @@ import (
 
 func TestVerifyContent(t *testing.T) {
 	sign := singleSignature.NewECDSA()
-	txSigner := signer.NewTransactionSigner()
 
 	keyPair1, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
 
@@ -21,7 +19,6 @@ func TestVerifyContent(t *testing.T) {
 
 	myTxBody := transaction_specific.NewTxAccCreation(0, keyPair1.PublicToBytes())
 	myTransaction := transaction.NewTransaction(0, myTxBody)
-	txSigner.SignTransaction(keyPair1, myTransaction)
 	transactions = append(transactions, myTransaction)
 
 	groupName := "EPS-41"
@@ -29,7 +26,6 @@ func TestVerifyContent(t *testing.T) {
 	membersPublicKeys = append(membersPublicKeys, keyPair1.PublicToBytes())
 	txBody1 := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
 	transaction1 := transaction.NewTransaction(1, txBody1)
-	txSigner.SignTransaction(keyPair1, transaction1)
 	transactions = append(transactions, transaction1)
 
 	expirationDate := time.Now()
@@ -38,12 +34,10 @@ func TestVerifyContent(t *testing.T) {
 	whiteList := [][33]byte{{1, 2, 3}}
 	txBody2 := transaction_specific.NewTxVotingCreation(expirationDate, votingDescr, answers, whiteList)
 	transaction2 := transaction.NewTransaction(2, txBody2)
-	txSigner.SignTransaction(keyPair1, transaction2)
 	transactions = append(transactions, transaction2)
 
 	myTxBody1 := transaction_specific.NewTxAccCreation(1, keyPair1.PublicToBytes())
 	myTransaction1 := transaction.NewTransaction(0, myTxBody1)
-	txSigner.SignTransaction(keyPair1, myTransaction)
 
 	type args struct {
 		transaction     transaction.ITransaction

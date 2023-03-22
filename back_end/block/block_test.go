@@ -24,7 +24,7 @@ func TestBlock(t *testing.T) {
 
 	expect := "qRe34zCgwa9scJCoZTFJx0_lg9kS2NC_qw4_BwbiNt8="
 
-	got := b.GetHash()
+	got := b.GetHashString()
 	if got != expect {
 		t.Errorf("Got %s, instead of %s", got, expect)
 	}
@@ -34,7 +34,7 @@ func TestBlock(t *testing.T) {
 
 	b.Sign(key, signature)
 
-	got = b.GetHash()
+	got = b.GetHashString()
 	if got != expect {
 		t.Errorf("Got %s, instead of %s", got, expect)
 	}
