@@ -20,7 +20,7 @@ func TestIsInMemPool(t *testing.T) {
 	membersPublicKeys := [][33]byte{}
 	membersPublicKeys = append(membersPublicKeys, [33]byte{1, 2, 3})
 	grpCreationBody := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
-	txGroupCreation := transaction.NewTransaction(1, grpCreationBody)
+	txGroupCreation := transaction.NewTransaction(transaction.GroupCreation, grpCreationBody)
 	v.MemPool = append(v.MemPool, txGroupCreation)
 
 	expirationDate := time.Now()
@@ -28,11 +28,11 @@ func TestIsInMemPool(t *testing.T) {
 	answers := []string{"Veres M.M.", "Chentsov O.I."}
 	whiteList := [][33]byte{{1, 2, 3}}
 	votingCreationBody := transaction_specific.NewTxVotingCreation(expirationDate, votingDescr, answers, whiteList)
-	txVotingCreation := transaction.NewTransaction(2, votingCreationBody)
+	txVotingCreation := transaction.NewTransaction(transaction.VotingCreation, votingCreationBody)
 	v.MemPool = append(v.MemPool, txVotingCreation)
 
 	accCreationBody := transaction_specific.NewTxAccCreation(0, [33]byte{1, 2, 3})
-	txAccountCreation := transaction.NewTransaction(0, accCreationBody)
+	txAccountCreation := transaction.NewTransaction(transaction.AccountCreation, accCreationBody)
 
 	type args struct {
 		transaction transaction.ITransaction
@@ -78,14 +78,14 @@ func TestCreateBlock(t *testing.T) {
 
 	keyPair2, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
 	accCreationBody := transaction_specific.NewTxAccCreation(0, keyPair2.PublicToBytes())
-	txAccountCreation := transaction.NewTransaction(0, accCreationBody)
+	txAccountCreation := transaction.NewTransaction(transaction.AccountCreation, accCreationBody)
 	txSigner.SignTransaction(keyPair1, txAccountCreation)
 
 	groupName := "EPS-41"
 	membersPublicKeys := [][33]byte{}
 	membersPublicKeys = append(membersPublicKeys, keyPair1.PublicToBytes())
 	grpCreationBody := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
-	txGroupCreation := transaction.NewTransaction(1, grpCreationBody)
+	txGroupCreation := transaction.NewTransaction(transaction.GroupCreation, grpCreationBody)
 	txSigner.SignTransaction(keyPair1, txGroupCreation)
 
 	expirationDate := time.Now()
@@ -93,11 +93,11 @@ func TestCreateBlock(t *testing.T) {
 	answers := []string{"Veres M.M.", "Chentsov O.I."}
 	whiteList := [][33]byte{keyPair1.PublicToBytes()}
 	votingCreationBody := transaction_specific.NewTxVotingCreation(expirationDate, votingDescr, answers, whiteList)
-	txVotingCreation := transaction.NewTransaction(2, votingCreationBody)
+	txVotingCreation := transaction.NewTransaction(transaction.VotingCreation, votingCreationBody)
 	txSigner.SignTransaction(keyPair1, txVotingCreation)
 
 	voteBody := transaction_specific.NewTxVote([32]byte{}, 0)
-	txVote := transaction.NewTransaction(0, voteBody)
+	txVote := transaction.NewTransaction(transaction.Vote, voteBody)
 	txSigner.SignTransaction(keyPair1, txVote)
 
 	validator := &Validator{

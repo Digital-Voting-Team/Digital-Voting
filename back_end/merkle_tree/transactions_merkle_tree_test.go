@@ -18,14 +18,14 @@ func TestVerifyContent(t *testing.T) {
 	transactions := []transaction.ITransaction{}
 
 	myTxBody := transaction_specific.NewTxAccCreation(0, keyPair1.PublicToBytes())
-	myTransaction := transaction.NewTransaction(0, myTxBody)
+	myTransaction := transaction.NewTransaction(transaction.AccountCreation, myTxBody)
 	transactions = append(transactions, myTransaction)
 
 	groupName := "EPS-41"
 	membersPublicKeys := [][33]byte{}
 	membersPublicKeys = append(membersPublicKeys, keyPair1.PublicToBytes())
 	txBody1 := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
-	transaction1 := transaction.NewTransaction(1, txBody1)
+	transaction1 := transaction.NewTransaction(transaction.GroupCreation, txBody1)
 	transactions = append(transactions, transaction1)
 
 	expirationDate := time.Now()
@@ -33,11 +33,11 @@ func TestVerifyContent(t *testing.T) {
 	answers := []string{"Veres M.M.", "Chentsov O.I."}
 	whiteList := [][33]byte{{1, 2, 3}}
 	txBody2 := transaction_specific.NewTxVotingCreation(expirationDate, votingDescr, answers, whiteList)
-	transaction2 := transaction.NewTransaction(2, txBody2)
+	transaction2 := transaction.NewTransaction(transaction.VotingCreation, txBody2)
 	transactions = append(transactions, transaction2)
 
 	myTxBody1 := transaction_specific.NewTxAccCreation(1, keyPair1.PublicToBytes())
-	myTransaction1 := transaction.NewTransaction(0, myTxBody1)
+	myTransaction1 := transaction.NewTransaction(transaction.AccountCreation, myTxBody1)
 
 	type args struct {
 		transaction     transaction.ITransaction
