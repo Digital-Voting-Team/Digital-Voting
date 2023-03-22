@@ -56,8 +56,8 @@ func TestVerify(t *testing.T) {
 
 	msg := "String ...."
 	msg2 := "String2 ...."
-	signature := sign.Sign(pk1, msg)
-	signature1 := sign.Sign(pk2, msg)
+	signature := sign.Sign(msg, pk1)
+	signature1 := sign.Sign(msg, pk2)
 	type fields struct {
 		GenPoint *curve.Point
 		Curve    *curve.MontgomeryCurve
@@ -130,7 +130,7 @@ func TestVerify(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := sign.Verify(tt.args.publicKey, tt.args.message, tt.args.signature); got != tt.want {
+			if got := sign.Verify(tt.args.message, tt.args.publicKey, tt.args.signature); got != tt.want {
 				t.Errorf("Verify() = %v, want %v", got, tt.want)
 			}
 		})
@@ -142,10 +142,10 @@ func TestBytesToSignature(t *testing.T) {
 	keyPair, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
 	message := "1"
 
-	signature := sign.Sign(keyPair.GetPrivateKey(), message)
+	signature := sign.Sign(message, keyPair.GetPrivateKey())
 	sigBytes := signature.SignatureToBytes()
 
-	signature1 := sign.Sign(keyPair.GetPrivateKey(), message+"1")
+	signature1 := sign.Sign(message+"1", keyPair.GetPrivateKey())
 
 	type args struct {
 		data [65]byte
@@ -187,7 +187,7 @@ func TestSignatureToBytes(t *testing.T) {
 	keyPair, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
 	message := "1"
 
-	signature := sign.Sign(keyPair.GetPrivateKey(), message)
+	signature := sign.Sign(message, keyPair.GetPrivateKey())
 	sigBytes := signature.SignatureToBytes()
 
 	tests := []struct {

@@ -33,6 +33,25 @@ type KeyPair struct {
 	curve      curve.ICurve
 }
 
+func (kp *KeyPair) SetPrivateKey(privateKey *big.Int) {
+	kp.privateKey = privateKey
+}
+
+func (kp *KeyPair) SetPublicKey(publicKey *curve.Point) {
+	kp.publicKey = publicKey
+}
+
+func (kp *KeyPair) BytesToPrivate(privateKey [32]byte) {
+	kp.privateKey = new(big.Int).SetBytes(privateKey[:])
+}
+
+func (kp *KeyPair) PrivateToBytes() [32]byte {
+	result := [32]byte{}
+	kp.privateKey.FillBytes(result[:])
+
+	return result
+}
+
 func (kp *KeyPair) PublicToBytes() [33]byte {
 	if kp.publicKey == nil {
 		panic("not existing public key")

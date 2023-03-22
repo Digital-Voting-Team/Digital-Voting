@@ -24,11 +24,10 @@ func TestVerifyContent(t *testing.T) {
 	txSigner.SignTransaction(keyPair1, myTransaction)
 	transactions = append(transactions, myTransaction)
 
-	groupIdentifier := [33]byte{1, 2, 3}
 	groupName := "EPS-41"
 	membersPublicKeys := [][33]byte{}
 	membersPublicKeys = append(membersPublicKeys, keyPair1.PublicToBytes())
-	txBody1 := transaction_specific.NewTxGroupCreation(groupIdentifier, groupName, membersPublicKeys...)
+	txBody1 := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
 	transaction1 := transaction.NewTransaction(1, txBody1)
 	txSigner.SignTransaction(keyPair1, transaction1)
 	transactions = append(transactions, transaction1)

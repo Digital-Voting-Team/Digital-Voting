@@ -2,6 +2,8 @@ package transaction
 
 import (
 	"crypto/sha256"
+	"digital-voting/identity_provider"
+	singleSignature "digital-voting/signature/signatures/single_signature"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -18,6 +20,10 @@ type Transaction struct {
 	PublicKey [33]byte `json:"public_key"`
 }
 
+func (tx *Transaction) GetTxType() uint8 {
+	return tx.TxType
+}
+
 func (tx *Transaction) Sign(publicKey [33]byte, signature [65]byte) {
 	tx.Signature = signature
 	tx.PublicKey = publicKey
@@ -27,10 +33,10 @@ func NewTransaction(txType uint8, txBody TxBody) *Transaction {
 	return &Transaction{TxType: txType, TxBody: txBody, Nonce: uint32(rand.Int())}
 }
 
-func (tx *Transaction) GetHash() string {
+func (tx *Transaction) GetSignatureMessage() string {
 	hasher := sha256.New()
 
-	bytes := []byte(fmt.Sprintf("%d, %s, %v, %d", tx.TxType, tx.TxBody.GetStringToSign(), tx.Data, tx.Nonce))
+	bytes := []byte(fmt.Sprint(tx.TxType, tx.TxBody.GetSignatureMessage(), tx.Data, tx.Nonce))
 	hasher.Write(bytes)
 	bytes = hasher.Sum(nil)
 
@@ -49,10 +55,14 @@ func (tx *Transaction) Print() {
 	log.Println(tx)
 }
 
-func (tx *Transaction) HashString() string {
+func (tx *Transaction) GetConcatenation() string {
+	return fmt.Sprint(tx.TxType, tx.TxBody.GetSignatureMessage(), tx.Data, tx.Nonce, tx.Signature, tx.PublicKey)
+}
+
+func (tx *Transaction) GetHash() string {
 	hasher := sha256.New()
 
-	bytes := []byte(tx.String())
+	bytes := []byte(tx.GetConcatenation())
 	hasher.Write(bytes)
 	bytes = hasher.Sum(nil)
 
@@ -63,9 +73,19 @@ func (tx *Transaction) HashString() string {
 }
 
 func (tx *Transaction) IsEqual(otherTransaction *Transaction) bool {
-	return tx.TxType == otherTransaction.TxType &&
-		tx.Nonce == otherTransaction.Nonce &&
-		tx.TxBody == otherTransaction.TxBody &&
-		tx.Signature == otherTransaction.Signature &&
-		tx.PublicKey == otherTransaction.PublicKey
+	return tx.GetHash() == otherTransaction.GetHash()
+}
+
+func (tx *Transaction) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+	if !tx.TxBody.Validate(identityProvider) || !tx.TxBody.CheckPublicKeyByRole(identityProvider, tx.PublicKey) {
+		return false
+	}
+
+	// TODO: think of passing this instead of creating
+	ecdsa := singleSignature.NewECDSA()
+	return ecdsa.VerifyBytes(
+		tx.GetSignatureMessage(),
+		tx.PublicKey,
+		tx.Signature,
+	)
 }

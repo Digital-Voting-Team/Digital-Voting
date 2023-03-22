@@ -62,6 +62,19 @@ func BytesToSignature(data [][65]byte, keyImage [33]byte) *RingSignature {
 	return rs
 }
 
+func (ec *ECDSA_RS) SignBytes(message string, privateKey [32]byte, publicKey [33]byte, publicKeys [][33]byte, s int) (*RingSignature, error) {
+	keyPair := new(keys.KeyPair)
+	keyPair.BytesToPrivate(privateKey)
+	keyPair.BytesToPublic(publicKey)
+
+	pubKeys := make([]*curve2.Point, len(publicKeys))
+	for i, pKey := range publicKeys {
+		pubKeys[i] = curve2.BytesToPoint(pKey, ec.Curve)
+	}
+
+	return ec.Sign(message, keyPair, pubKeys, s)
+}
+
 func (ec *ECDSA_RS) Sign(message string, keyPair keys.KP, publicKeys []*curve2.Point, s int) (*RingSignature, error) {
 	// Define the size of the ring of public keys that will be used in signing
 	numberOfPKeys := len(publicKeys)
@@ -182,6 +195,17 @@ func (ec *ECDSA_RS) Sign(message string, keyPair keys.KP, publicKeys []*curve2.P
 		CList:    cList,
 		RList:    rList,
 	}, nil
+}
+
+func (ec *ECDSA_RS) VerifyBytes(message string, publicKeys [][33]byte, signature [][65]byte, keyImage [33]byte) bool {
+	pubKeys := make([]*curve2.Point, len(publicKeys))
+	for i, pKey := range publicKeys {
+		pubKeys[i] = curve2.BytesToPoint(pKey, ec.Curve)
+	}
+
+	sig := BytesToSignature(signature, keyImage)
+
+	return ec.Verify(message, pubKeys, sig)
 }
 
 func (ec *ECDSA_RS) Verify(message string, publicKeys []*curve2.Point, sig *RingSignature) bool {

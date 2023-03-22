@@ -21,14 +21,14 @@ func NewTransactionSigner() *TransactionSigner {
 
 func (ts *TransactionSigner) SignTransaction(keyPair *keys.KeyPair, transaction *transaction.Transaction) {
 	privateKey := keyPair.GetPrivateKey()
-	messageToSign := transaction.GetHash()
+	messageToSign := transaction.GetSignatureMessage()
 
-	signature := ts.TxSigner.Sign(privateKey, messageToSign)
+	signature := ts.TxSigner.Sign(messageToSign, privateKey)
 	transaction.Sign(keyPair.PublicToBytes(), signature.SignatureToBytes())
 }
 
 func (ts *TransactionSigner) SignTransactionAnonymous(keyPair *keys.KeyPair, publicKeys []*curve.Point, s int, transaction *transaction_specific.TxVoteAnonymous) {
-	messageToSign := transaction.GetHash()
+	messageToSign := transaction.GetSignatureMessage()
 
 	rSignature, err := ts.TxSignerAnonymous.Sign(messageToSign, keyPair, publicKeys, s)
 	if err != nil {

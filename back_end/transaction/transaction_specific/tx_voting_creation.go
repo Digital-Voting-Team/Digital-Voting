@@ -1,9 +1,11 @@
 package transaction_specific
 
 import (
+	"crypto/sha256"
+	"digital-voting/identity_provider"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"time"
 )
 
@@ -28,8 +30,8 @@ func NewTxVotingCreation(expirationDate time.Time, votingDescription string, ans
 	return &TxVotingCreation{ExpirationDate: expDate, VotingDescription: votingDescr, Answers: ans, Whitelist: whitelist}
 }
 
-func (tx *TxVotingCreation) GetStringToSign() string {
-	return fmt.Sprintf("%d, %v, %v, %v", tx.ExpirationDate, tx.VotingDescription, tx.Answers, tx.Whitelist)
+func (tx *TxVotingCreation) GetSignatureMessage() string {
+	return fmt.Sprint(tx.ExpirationDate, tx.VotingDescription, tx.Answers, tx.Whitelist)
 }
 
 func (tx *TxVotingCreation) String() string {
@@ -37,9 +39,33 @@ func (tx *TxVotingCreation) String() string {
 	return string(str)
 }
 
-func (tx *TxVotingCreation) IsEqual(otherTransaction *TxVotingCreation) bool {
-	return tx.ExpirationDate == otherTransaction.ExpirationDate &&
-		tx.VotingDescription == otherTransaction.VotingDescription &&
-		reflect.DeepEqual(tx.Answers, otherTransaction.Answers) &&
-		reflect.DeepEqual(tx.Whitelist, otherTransaction.Whitelist)
+func (tx *TxVotingCreation) GetHash() string {
+	hasher := sha256.New()
+
+	bytes := []byte(tx.GetSignatureMessage())
+	hasher.Write(bytes)
+	bytes = hasher.Sum(nil)
+
+	hasher.Reset()
+	hasher.Write(bytes)
+
+	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+}
+
+func (tx *TxVotingCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
+	return tx.GetHash() == otherTransaction.GetHash()
+}
+
+func (tx *TxVotingCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
+	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.VotingCreationAdmin)
+}
+
+func (tx *TxVotingCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+	// TODO: think of date validation
+	for _, pubKey := range tx.Whitelist {
+		if !identityProvider.CheckPubKeyPresence(pubKey, identity_provider.User) {
+			return false
+		}
+	}
+	return true
 }
