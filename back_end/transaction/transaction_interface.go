@@ -6,6 +6,6 @@ import "digital-voting/identity_provider"
 type ITransaction interface {
 	GetHash() string
 	Print()
-	GetTxType() uint8
+	GetTxType() TxType
 	Validate(identityProvider *identity_provider.IdentityProvider) bool
 }

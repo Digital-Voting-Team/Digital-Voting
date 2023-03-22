@@ -11,8 +11,18 @@ import (
 	"math/rand"
 )
 
+type TxType uint8
+
+const (
+	AccountCreation TxType = iota
+	GroupCreation
+	VotingCreation
+	Vote
+	VoteAnonymous
+)
+
 type Transaction struct {
-	TxType    uint8    `json:"tx_type"`
+	TxType    TxType   `json:"tx_type"`
 	TxBody    TxBody   `json:"tx_body"`
 	Data      []byte   `json:"data"`
 	Nonce     uint32   `json:"nonce"`
@@ -20,7 +30,7 @@ type Transaction struct {
 	PublicKey [33]byte `json:"public_key"`
 }
 
-func (tx *Transaction) GetTxType() uint8 {
+func (tx *Transaction) GetTxType() TxType {
 	return tx.TxType
 }
 
@@ -29,7 +39,7 @@ func (tx *Transaction) Sign(publicKey [33]byte, signature [65]byte) {
 	tx.PublicKey = publicKey
 }
 
-func NewTransaction(txType uint8, txBody TxBody) *Transaction {
+func NewTransaction(txType TxType, txBody TxBody) *Transaction {
 	return &Transaction{TxType: txType, TxBody: txBody, Nonce: uint32(rand.Int())}
 }
 
