@@ -1,18 +1,15 @@
 package keys
 
 import (
-	"crypto/sha256"
 	"digital-voting/signature/curve"
-	sig "digital-voting/signature/signatures/single_signature"
 	"reflect"
 	"testing"
-	"time"
 )
 
 func TestBytesToPublic(t *testing.T) {
-	sign := sig.NewECDSA()
-	keyPair, _ := FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
-	keyPair1, _ := FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	montgomeryCurve := curve.NewCurve25519()
+	keyPair, _ := Random(montgomeryCurve)
+	keyPair1, _ := Random(montgomeryCurve)
 
 	publicKey := keyPair.GetPublicKey()
 	publicKeyBytes := publicKey.PointToBytes()
@@ -54,8 +51,7 @@ func TestBytesToPublic(t *testing.T) {
 }
 
 func TestPublicToBytes(t *testing.T) {
-	sign := sig.NewECDSA()
-	keyPair, _ := FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair, _ := Random(curve.NewCurve25519())
 
 	publicKey := keyPair.GetPublicKey()
 	publicKeyBytes := publicKey.PointToBytes()
