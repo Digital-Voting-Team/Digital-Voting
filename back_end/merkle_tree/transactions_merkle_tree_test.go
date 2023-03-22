@@ -2,6 +2,7 @@ package merkle_tree
 
 import (
 	"crypto/sha256"
+	"digital-voting/account"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
 	"digital-voting/transaction"
@@ -17,7 +18,7 @@ func TestVerifyContent(t *testing.T) {
 
 	transactions := []transaction.ITransaction{}
 
-	myTxBody := transaction_specific.NewTxAccCreation(0, keyPair1.PublicToBytes())
+	myTxBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, keyPair1.PublicToBytes())
 	myTransaction := transaction.NewTransaction(transaction.AccountCreation, myTxBody)
 	transactions = append(transactions, myTransaction)
 
@@ -36,7 +37,7 @@ func TestVerifyContent(t *testing.T) {
 	transaction2 := transaction.NewTransaction(transaction.VotingCreation, txBody2)
 	transactions = append(transactions, transaction2)
 
-	myTxBody1 := transaction_specific.NewTxAccCreation(1, keyPair1.PublicToBytes())
+	myTxBody1 := transaction_specific.NewTxAccCreation(account.VotingCreationAdmin, keyPair1.PublicToBytes())
 	myTransaction1 := transaction.NewTransaction(transaction.AccountCreation, myTxBody1)
 
 	type args struct {

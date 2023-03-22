@@ -2,6 +2,7 @@ package validation
 
 import (
 	"crypto/sha256"
+	"digital-voting/account"
 	"digital-voting/block"
 	"digital-voting/identity_provider"
 	"digital-voting/signature/keys"
@@ -31,7 +32,7 @@ func TestIsInMemPool(t *testing.T) {
 	txVotingCreation := transaction.NewTransaction(transaction.VotingCreation, votingCreationBody)
 	v.MemPool = append(v.MemPool, txVotingCreation)
 
-	accCreationBody := transaction_specific.NewTxAccCreation(0, [33]byte{1, 2, 3})
+	accCreationBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, [33]byte{1, 2, 3})
 	txAccountCreation := transaction.NewTransaction(transaction.AccountCreation, accCreationBody)
 
 	type args struct {
@@ -77,7 +78,7 @@ func TestCreateBlock(t *testing.T) {
 	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.RegistrationAdmin)
 
 	keyPair2, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
-	accCreationBody := transaction_specific.NewTxAccCreation(0, keyPair2.PublicToBytes())
+	accCreationBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, keyPair2.PublicToBytes())
 	txAccountCreation := transaction.NewTransaction(transaction.AccountCreation, accCreationBody)
 	txSigner.SignTransaction(keyPair1, txAccountCreation)
 
