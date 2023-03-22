@@ -5,7 +5,6 @@ import (
 	"digital-voting/block"
 	"digital-voting/blockchain"
 	ip "digital-voting/identity_provider"
-	"digital-voting/merkle_tree"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
 	"digital-voting/signer"
@@ -37,26 +36,13 @@ func main() {
 	txSigner := signer.NewTransactionSigner()
 	txSigner.SignTransaction(adminKeyPair, genesisTransaction)
 
-	blockBody := block.Body{
-		Transactions: []tx.ITransaction{genesisTransaction},
-	}
-
-	blockHeader := block.Header{
-		Previous:   [32]byte{},
-		TimeStamp:  uint64(time.Now().Unix()),
-		MerkleRoot: merkle_tree.GetMerkleRoot(blockBody.Transactions),
-	}
-
-	genesisBlock := &block.Block{
-		Header: blockHeader,
-		Body:   blockBody,
-	}
+	genesisBlock := block.NewBlock([]tx.ITransaction{genesisTransaction}, [32]byte{})
 
 	validator.SignBlock(genesisBlock)
-	blockchain := &blockchain.Blockchain{}
-	validator.AddBlockToChain(blockchain, genesisBlock)
+	currentBlockchain := &blockchain.Blockchain{}
+	validator.AddBlockToChain(currentBlockchain, genesisBlock)
 
-	for _, block := range blockchain.Blocks {
-		fmt.Printf("%v\n", block)
+	for _, b := range currentBlockchain.Blocks {
+		fmt.Printf("%v\n", b)
 	}
 }
