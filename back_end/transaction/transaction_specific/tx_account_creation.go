@@ -2,6 +2,7 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
+	"digital-voting/account"
 	"digital-voting/identity_provider"
 	"encoding/base64"
 	"encoding/json"
@@ -9,11 +10,11 @@ import (
 )
 
 type TxAccountCreation struct {
-	AccountType  uint8    `json:"account_type"`
-	NewPublicKey [33]byte `json:"new_public_key"`
+	AccountType  account.Type `json:"account_type"`
+	NewPublicKey [33]byte     `json:"new_public_key"`
 }
 
-func NewTxAccCreation(accountType uint8, newPublicKey [33]byte) *TxAccountCreation {
+func NewTxAccCreation(accountType account.Type, newPublicKey [33]byte) *TxAccountCreation {
 	return &TxAccountCreation{AccountType: accountType, NewPublicKey: newPublicKey}
 }
 
