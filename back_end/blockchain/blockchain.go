@@ -1,6 +1,9 @@
 package blockchain
 
-import "digital-voting/block"
+import (
+	"digital-voting/block"
+	"fmt"
+)
 
 type Blockchain struct {
 	Blocks []*block.Block
@@ -8,4 +11,14 @@ type Blockchain struct {
 
 func (b *Blockchain) AddBlock(block *block.Block) {
 	b.Blocks = append(b.Blocks, block)
+}
+
+func (b *Blockchain) GetBlock(hash [32]byte) (*block.Block, error) {
+	for _, current := range b.Blocks {
+		if current.GetHash() == hash {
+			return current, nil
+		}
+	}
+
+	return nil, fmt.Errorf("block with given hash was not found")
 }

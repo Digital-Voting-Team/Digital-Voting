@@ -43,7 +43,7 @@ func (b *Block) AddMerkleRoot(merkleRoot [32]byte) {
 	b.Header.MerkleRoot = merkleRoot
 }
 
-func (b *Block) GetHash() string {
+func (b *Block) GetHash() [32]byte {
 	hasher := sha256.New()
 
 	bytes := []byte(b.Header.GetConcatenation())
@@ -53,5 +53,14 @@ func (b *Block) GetHash() string {
 	hasher.Reset()
 	hasher.Write(bytes)
 
-	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+	hash := [32]byte{}
+	copy(hash[:], hasher.Sum(nil)[:32])
+
+	return hash
+}
+
+func (b *Block) GetHashString() string {
+	hash := b.GetHash()
+
+	return base64.URLEncoding.EncodeToString(hash[:])
 }
