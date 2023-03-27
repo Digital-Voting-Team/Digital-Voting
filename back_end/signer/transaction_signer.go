@@ -35,9 +35,9 @@ func (ts *TransactionSigner) SignTransactionAnonymous(keyPair *keys.KeyPair, pub
 		log.Panicln(err)
 	}
 
-	pKeysData := make([][33]byte, len(publicKeys))
+	pKeysData := make([]keys.PublicKeyBytes, len(publicKeys))
 	for i := 0; i < len(pKeysData); i++ {
-		pKeysData[i] = publicKeys[i].PointToBytes()
+		pKeysData[i] = keys.PublicKeyBytes(publicKeys[i].PointToBytes())
 	}
 
 	rSigData, keyImage := rSignature.SignatureToBytes()

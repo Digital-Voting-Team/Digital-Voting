@@ -3,18 +3,19 @@ package transaction_specific
 import (
 	"crypto/sha256"
 	"digital-voting/identity_provider"
+	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 )
 
 type TxGroupCreation struct {
-	GroupIdentifier   [33]byte   `json:"group_identifier"`
-	GroupName         [256]byte  `json:"group_name"`
-	MembersPublicKeys [][33]byte `json:"members_public_keys"`
+	GroupIdentifier   [33]byte              `json:"group_identifier"`
+	GroupName         [256]byte             `json:"group_name"`
+	MembersPublicKeys []keys.PublicKeyBytes `json:"members_public_keys"`
 }
 
-func NewTxGroupCreation(groupName string, membersPublicKeys ...[33]byte) *TxGroupCreation {
+func NewTxGroupCreation(groupName string, membersPublicKeys ...keys.PublicKeyBytes) *TxGroupCreation {
 	grpName := [256]byte{}
 	copy(grpName[:], groupName)
 
@@ -31,11 +32,11 @@ func NewTxGroupCreation(groupName string, membersPublicKeys ...[33]byte) *TxGrou
 	return &TxGroupCreation{GroupIdentifier: grpId, GroupName: grpName, MembersPublicKeys: membersPublicKeys}
 }
 
-func (tx *TxGroupCreation) AddGroupMember(publicKey [33]byte) {
+func (tx *TxGroupCreation) AddGroupMember(publicKey keys.PublicKeyBytes) {
 	tx.MembersPublicKeys = append(tx.MembersPublicKeys, publicKey)
 }
 
-func (tx *TxGroupCreation) RemoveGroupMember(publicKey [33]byte) {
+func (tx *TxGroupCreation) RemoveGroupMember(publicKey keys.PublicKeyBytes) {
 	for i, key := range tx.MembersPublicKeys {
 		//it works for [33]byte
 		if key == publicKey {
@@ -71,7 +72,7 @@ func (tx *TxGroupCreation) IsEqual(otherTransaction *TxGroupCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxGroupCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
+func (tx *TxGroupCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
 	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.RegistrationAdmin)
 }
 

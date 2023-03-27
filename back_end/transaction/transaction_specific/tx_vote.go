@@ -3,6 +3,7 @@ package transaction_specific
 import (
 	"crypto/sha256"
 	"digital-voting/identity_provider"
+	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -43,7 +44,7 @@ func (tx *TxVote) IsEqual(otherTransaction *TxVote) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxVote) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
+func (tx *TxVote) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
 	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.User)
 }
 

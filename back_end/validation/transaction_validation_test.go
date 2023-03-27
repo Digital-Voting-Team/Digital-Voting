@@ -1,10 +1,9 @@
 package validation
 
 import (
-	"crypto/sha256"
 	"digital-voting/account"
 	"digital-voting/identity_provider"
-	curve "digital-voting/signature/curve"
+	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
 	"digital-voting/signer"
@@ -20,18 +19,18 @@ func TestValidateTransaction(t *testing.T) {
 	txSigner := signer.NewTransactionSigner()
 	identityProvider := identity_provider.NewIdentityProvider()
 
-	keyPair1, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair1, _ := keys.Random(sign.Curve)
 	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.User)
 	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.VotingCreationAdmin)
 	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.RegistrationAdmin)
 
-	keyPair2, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair2, _ := keys.Random(sign.Curve)
 	accCreationBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, keyPair2.PublicToBytes())
 	txAccountCreation := transaction.NewTransaction(transaction.AccountCreation, accCreationBody)
 	txSigner.SignTransaction(keyPair1, txAccountCreation)
 
 	groupName := "EPS-41"
-	membersPublicKeys := [][33]byte{}
+	membersPublicKeys := []keys.PublicKeyBytes{}
 	membersPublicKeys = append(membersPublicKeys, keyPair1.PublicToBytes())
 	grpCreationBody := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
 	txGroupCreation := transaction.NewTransaction(transaction.GroupCreation, grpCreationBody)
@@ -52,7 +51,7 @@ func TestValidateTransaction(t *testing.T) {
 	var publicKeys []*curve.Point
 	publicKeys = append(publicKeys, keyPair1.GetPublicKey())
 	for i := 0; i < 5; i++ {
-		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+		tempKeyPair, err := keys.Random(sign.Curve)
 		if err != nil {
 			log.Panicln(err)
 		}
