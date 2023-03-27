@@ -22,6 +22,9 @@ const (
 	SeedSize = 32
 )
 
+type PrivateKeyBytes [32]byte
+type PublicKeyBytes [33]byte
+
 // KeyPair represents a keys with generated on ed25519 key pair and seed
 // used for its creation. In addition, it stores address which is
 // public key representation in human-readable form.
@@ -41,27 +44,27 @@ func (kp *KeyPair) SetPublicKey(publicKey *curve.Point) {
 	kp.publicKey = publicKey
 }
 
-func (kp *KeyPair) BytesToPrivate(privateKey [32]byte) {
+func (kp *KeyPair) BytesToPrivate(privateKey PrivateKeyBytes) {
 	kp.privateKey = new(big.Int).SetBytes(privateKey[:])
 }
 
-func (kp *KeyPair) PrivateToBytes() [32]byte {
-	result := [32]byte{}
+func (kp *KeyPair) PrivateToBytes() PrivateKeyBytes {
+	result := PrivateKeyBytes{}
 	kp.privateKey.FillBytes(result[:])
 
 	return result
 }
 
-func (kp *KeyPair) PublicToBytes() [33]byte {
+func (kp *KeyPair) PublicToBytes() PublicKeyBytes {
 	if kp.publicKey == nil {
 		panic("not existing public key")
 	}
 
-	return kp.curve.MarshalCompressed(kp.publicKey)
+	return PublicKeyBytes(kp.curve.MarshalCompressed(kp.publicKey))
 }
 
-func (kp *KeyPair) BytesToPublic(data [33]byte) {
-	kp.publicKey = kp.curve.UnmarshalCompressed(data)
+func (kp *KeyPair) BytesToPublic(data PublicKeyBytes) {
+	kp.publicKey = kp.curve.UnmarshalCompressed(curve.PointCompressed(data))
 }
 
 // Seed is seed getter.
@@ -98,48 +101,6 @@ func (kp *KeyPair) Hint() (r [4]byte) {
 func (kp *KeyPair) FromAddress() (*FromAddress, error) {
 	return newFromAddress(kp.address)
 }
-
-//func sign(signatures, privateKey, message []byte) {
-//	if l := len(privateKey); l != PrivateKeySize {
-//		panic("ed25519: bad private key length: " + strconv.Itoa(l))
-//	}
-//	seed, publicKey := privateKey[:SeedSize], privateKey[SeedSize:]
-//
-//	h := sha512.Sum512(seed)
-//	s, err := edwards25519.NewScalar().SetBytesWithClamping(h[:32])
-//	if err != nil {
-//		panic("ed25519: internal error: setting scalar failed")
-//	}
-//	prefix := h[32:]
-//
-//	mh := sha512.New()
-//	mh.Write(prefix)
-//	mh.Write(message)
-//	messageDigest := make([]byte, 0, sha512.Size)
-//	messageDigest = mh.Sum(messageDigest)
-//	r, err := edwards25519.NewScalar().SetUniformBytes(messageDigest)
-//	if err != nil {
-//		panic("ed25519: internal error: setting scalar failed")
-//	}
-//
-//	R := (&edwards25519.Point{}).ScalarBaseMult(r)
-//
-//	kh := sha512.New()
-//	kh.Write(R.Bytes())
-//	kh.Write(publicKey)
-//	kh.Write(message)
-//	hramDigest := make([]byte, 0, sha512.Size)
-//	hramDigest = kh.Sum(hramDigest)
-//	k, err := edwards25519.NewScalar().SetUniformBytes(hramDigest)
-//	if err != nil {
-//		panic("ed25519: internal error: setting scalar failed")
-//	}
-//
-//	S := edwards25519.NewScalar().MultiplyAdd(k, s, r)
-//
-//	copy(signatures[:32], R.Bytes())
-//	copy(signatures[32:], S.Bytes())
-//}
 
 // Equal compares two KeyPair instances.
 func (kp *KeyPair) Equal(f *KeyPair) bool {
