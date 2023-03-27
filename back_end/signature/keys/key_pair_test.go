@@ -67,7 +67,7 @@ func TestPublicToBytes(t *testing.T) {
 		},
 		{
 			name:     "Incorrect conversion to bytes",
-			want:     [33]byte{12, 10, 11},
+			want:     PublicKeyBytes{12, 10, 11},
 			wantBool: false,
 		},
 	}

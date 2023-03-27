@@ -200,7 +200,7 @@ func TestSignatureToBytes(t *testing.T) {
 		},
 		{
 			name:     "Incorrect conversion to bytes",
-			want:     [65]byte{12, 10, 11},
+			want:     SingleSignatureBytes{12, 10, 11},
 			wantBool: false,
 		},
 	}
