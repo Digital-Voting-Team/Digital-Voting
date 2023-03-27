@@ -31,12 +31,14 @@ type SingleSignature struct {
 	S *big.Int `json:"s"`
 }
 
-func (ss *SingleSignature) SignatureToBytes() [65]byte {
+type SingleSignatureBytes [65]byte
+
+func (ss *SingleSignature) SignatureToBytes() SingleSignatureBytes {
 	// result[0] -> version
 	// result[1:32] -> R
 	// result[32:] -> S
 
-	result := [65]byte{}
+	result := SingleSignatureBytes{}
 	result[0] = '0'
 	ss.R.FillBytes(result[1:33])
 	ss.S.FillBytes(result[33:])
@@ -44,14 +46,14 @@ func (ss *SingleSignature) SignatureToBytes() [65]byte {
 	return result
 }
 
-func BytesToSignature(data [65]byte) *SingleSignature {
+func BytesToSignature(data SingleSignatureBytes) *SingleSignature {
 	//version := data[0]
 	rInt := new(big.Int).SetBytes(data[1:33])
 	sInt := new(big.Int).SetBytes(data[33:])
 	return &SingleSignature{R: rInt, S: sInt}
 }
 
-func (ec *ECDSA) SignBytes(message string, privateKey [32]byte) *SingleSignature {
+func (ec *ECDSA) SignBytes(message string, privateKey keys.PrivateKeyBytes) *SingleSignature {
 	keyPair := new(keys.KeyPair)
 	keyPair.BytesToPrivate(privateKey)
 
@@ -96,8 +98,8 @@ func (ec *ECDSA) Sign(message string, privateKey *big.Int) *SingleSignature {
 	return &SingleSignature{R: &r, S: &s}
 }
 
-func (ec *ECDSA) VerifyBytes(message string, publicKey [33]byte, signature [65]byte) bool {
-	pubKey := curve2.BytesToPoint(publicKey, ec.Curve)
+func (ec *ECDSA) VerifyBytes(message string, publicKey keys.PublicKeyBytes, signature SingleSignatureBytes) bool {
+	pubKey := curve2.BytesToPoint(curve2.PointCompressed(publicKey), ec.Curve)
 	sig := BytesToSignature(signature)
 
 	return ec.Verify(message, pubKey, sig)
