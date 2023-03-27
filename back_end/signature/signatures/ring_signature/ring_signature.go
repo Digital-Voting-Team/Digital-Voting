@@ -3,7 +3,7 @@ package signatures
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	curve2 "digital-voting/signature/curve"
+	crv "digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	"fmt"
 	"log"
@@ -11,12 +11,12 @@ import (
 )
 
 type ECDSA_RS struct {
-	GenPoint *curve2.Point
-	Curve    *curve2.MontgomeryCurve
+	GenPoint *crv.Point
+	Curve    *crv.MontgomeryCurve
 }
 
 func NewECDSA_RS() *ECDSA_RS {
-	curve := curve2.NewCurve25519()
+	curve := crv.NewCurve25519()
 	return &ECDSA_RS{
 		GenPoint: curve.G(),
 		Curve:    curve,
@@ -26,29 +26,32 @@ func NewECDSA_RS() *ECDSA_RS {
 // RingSignature
 // https://bytecoin.org/old/whitepaper.pdf
 type RingSignature struct {
-	KeyImage *curve2.Point `json:"key_image"`
-	CList    []*big.Int    `json:"c_list"`
-	RList    []*big.Int    `json:"r_list"`
+	KeyImage *crv.Point `json:"key_image"`
+	CList    []*big.Int `json:"c_list"`
+	RList    []*big.Int `json:"r_list"`
 }
 
-func (rs *RingSignature) SignatureToBytes() ([][65]byte, [33]byte) {
+type RingSignatureBytes [][65]byte
+type KeyImageBytes [33]byte
+
+func (rs *RingSignature) SignatureToBytes() (RingSignatureBytes, KeyImageBytes) {
 	// result[i][0] -> version
 	// result[i][1:32] -> CList[i]
 	// result[i][32:] -> RList[i]
 
-	result := make([][65]byte, len(rs.CList))
+	result := make(RingSignatureBytes, len(rs.CList))
 
 	for i := 0; i < len(result); i++ {
 		result[i][0] = '0'
 		rs.CList[i].FillBytes(result[i][1:33])
 		rs.RList[i].FillBytes(result[i][33:])
 	}
-	return result, rs.KeyImage.PointToBytes()
+	return result, KeyImageBytes(rs.KeyImage.PointToBytes())
 }
 
-func BytesToSignature(data [][65]byte, keyImage [33]byte) *RingSignature {
+func BytesToSignature(data RingSignatureBytes, keyImage KeyImageBytes) *RingSignature {
 	rs := &RingSignature{
-		KeyImage: curve2.BytesToPoint(keyImage, curve2.NewCurve25519()),
+		KeyImage: crv.BytesToPoint(crv.PointCompressed(keyImage), crv.NewCurve25519()),
 		CList:    []*big.Int{},
 		RList:    []*big.Int{},
 	}
@@ -62,20 +65,20 @@ func BytesToSignature(data [][65]byte, keyImage [33]byte) *RingSignature {
 	return rs
 }
 
-func (ec *ECDSA_RS) SignBytes(message string, privateKey [32]byte, publicKey [33]byte, publicKeys [][33]byte, s int) (*RingSignature, error) {
+func (ec *ECDSA_RS) SignBytes(message string, privateKey keys.PrivateKeyBytes, publicKey keys.PublicKeyBytes, publicKeys []keys.PublicKeyBytes, s int) (*RingSignature, error) {
 	keyPair := new(keys.KeyPair)
 	keyPair.BytesToPrivate(privateKey)
 	keyPair.BytesToPublic(publicKey)
 
-	pubKeys := make([]*curve2.Point, len(publicKeys))
+	pubKeys := make([]*crv.Point, len(publicKeys))
 	for i, pKey := range publicKeys {
-		pubKeys[i] = curve2.BytesToPoint(pKey, ec.Curve)
+		pubKeys[i] = crv.BytesToPoint(crv.PointCompressed(pKey), ec.Curve)
 	}
 
 	return ec.Sign(message, keyPair, pubKeys, s)
 }
 
-func (ec *ECDSA_RS) Sign(message string, keyPair keys.KP, publicKeys []*curve2.Point, s int) (*RingSignature, error) {
+func (ec *ECDSA_RS) Sign(message string, keyPair keys.KP, publicKeys []*crv.Point, s int) (*RingSignature, error) {
 	// Define the size of the ring of public keys that will be used in signing
 	numberOfPKeys := len(publicKeys)
 
@@ -101,8 +104,8 @@ func (ec *ECDSA_RS) Sign(message string, keyPair keys.KP, publicKeys []*curve2.P
 	}
 
 	// This 2 arrays of elliptic curve points will be calculated in cycle and used in hash calculation
-	var lArray []*curve2.Point
-	var rArray []*curve2.Point
+	var lArray []*crv.Point
+	var rArray []*crv.Point
 
 	// Calculating so-called key image which identifies the key pair of signer
 	keyImage := keyPair.GetKeyImage()
@@ -197,10 +200,10 @@ func (ec *ECDSA_RS) Sign(message string, keyPair keys.KP, publicKeys []*curve2.P
 	}, nil
 }
 
-func (ec *ECDSA_RS) VerifyBytes(message string, publicKeys [][33]byte, signature [][65]byte, keyImage [33]byte) bool {
-	pubKeys := make([]*curve2.Point, len(publicKeys))
+func (ec *ECDSA_RS) VerifyBytes(message string, publicKeys []keys.PublicKeyBytes, signature RingSignatureBytes, keyImage KeyImageBytes) bool {
+	pubKeys := make([]*crv.Point, len(publicKeys))
 	for i, pKey := range publicKeys {
-		pubKeys[i] = curve2.BytesToPoint(pKey, ec.Curve)
+		pubKeys[i] = crv.BytesToPoint(crv.PointCompressed(pKey), ec.Curve)
 	}
 
 	sig := BytesToSignature(signature, keyImage)
@@ -208,13 +211,13 @@ func (ec *ECDSA_RS) VerifyBytes(message string, publicKeys [][33]byte, signature
 	return ec.Verify(message, pubKeys, sig)
 }
 
-func (ec *ECDSA_RS) Verify(message string, publicKeys []*curve2.Point, sig *RingSignature) bool {
+func (ec *ECDSA_RS) Verify(message string, publicKeys []*crv.Point, sig *RingSignature) bool {
 	// Define the size of the ring of public keys that will be used in signatures
 	numberOfPKeys := len(publicKeys)
 
 	// This 2 arrays of elliptic curve points will be calculated in cycle and used in hash calculation
-	var newLArray []*curve2.Point
-	var newRArray []*curve2.Point
+	var newLArray []*crv.Point
+	var newRArray []*crv.Point
 
 	// A sum of c[i] in cList store in signatures data structure (will be calculated)
 	cExpected := new(big.Int)
@@ -279,7 +282,7 @@ func (ec *ECDSA_RS) Verify(message string, publicKeys []*curve2.Point, sig *Ring
 	return cReal.Cmp(cExpected) == 0
 }
 
-func getHash(message string, lArray, rArray []*curve2.Point) [32]byte {
+func getHash(message string, lArray, rArray []*crv.Point) [32]byte {
 	messageToHash := message
 
 	for i := 0; i < len(lArray); i++ {

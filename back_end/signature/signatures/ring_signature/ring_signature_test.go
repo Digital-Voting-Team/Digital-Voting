@@ -1,19 +1,17 @@
 package signatures
 
 import (
-	"crypto/sha256"
 	curve2 "digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	"log"
 	"math/big"
 	"reflect"
 	"testing"
-	"time"
 )
 
 func TestVerifySignature(t *testing.T) {
 	sign := NewECDSA_RS()
-	keyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair, err := keys.Random(sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -23,7 +21,7 @@ func TestVerifySignature(t *testing.T) {
 	publicKeys = append(publicKeys, publicKey)
 
 	for i := 0; i < 5; i++ {
-		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+		tempKeyPair, err := keys.Random(sign.Curve)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -38,7 +36,7 @@ func TestVerifySignature(t *testing.T) {
 		log.Panicln(err)
 	}
 
-	keyPair1, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair1, _ := keys.Random(sign.Curve)
 	ringSignature1, err := sign.Sign(message, keyPair1, publicKeys, s)
 	if err != nil {
 		log.Panicln(err)
@@ -47,7 +45,7 @@ func TestVerifySignature(t *testing.T) {
 	var publicKeys1 []*curve2.Point
 
 	for i := 0; i < 5; i++ {
-		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+		tempKeyPair, err := keys.Random(sign.Curve)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -188,7 +186,7 @@ func Test_getHash(t *testing.T) {
 func TestBytesToSignature(t *testing.T) {
 	sign := NewECDSA_RS()
 
-	keyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair, err := keys.Random(sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -198,7 +196,7 @@ func TestBytesToSignature(t *testing.T) {
 	publicKeys = append(publicKeys, publicKey)
 
 	for i := 0; i < 5; i++ {
-		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+		tempKeyPair, err := keys.Random(sign.Curve)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -213,8 +211,8 @@ func TestBytesToSignature(t *testing.T) {
 	sigBytes1, image1 := signature1.SignatureToBytes()
 
 	type args struct {
-		data     [][65]byte
-		keyImage [33]byte
+		data     RingSignatureBytes
+		keyImage KeyImageBytes
 	}
 	tests := []struct {
 		name     string
@@ -253,7 +251,7 @@ func TestBytesToSignature(t *testing.T) {
 func TestSignatureToBytes(t *testing.T) {
 	sign := NewECDSA_RS()
 
-	keyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair, err := keys.Random(sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -263,7 +261,7 @@ func TestSignatureToBytes(t *testing.T) {
 	publicKeys = append(publicKeys, publicKey)
 
 	for i := 0; i < 5; i++ {
-		tempKeyPair, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+		tempKeyPair, err := keys.Random(sign.Curve)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -279,8 +277,8 @@ func TestSignatureToBytes(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		want     [][65]byte
-		want1    [33]byte
+		want     RingSignatureBytes
+		want1    KeyImageBytes
 		wantBool bool
 	}{
 		{
