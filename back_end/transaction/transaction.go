@@ -87,11 +87,7 @@ func (tx *Transaction) IsEqual(otherTransaction *Transaction) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *Transaction) Validate(identityProvider *identity_provider.IdentityProvider) bool {
-	if !tx.TxBody.Validate(identityProvider) || !tx.TxBody.CheckPublicKeyByRole(identityProvider, tx.PublicKey) {
-		return false
-	}
-
+func (tx *Transaction) VerifySignature() bool {
 	// TODO: think of passing this instead of creating
 	ecdsa := singleSignature.NewECDSA()
 	return ecdsa.VerifyBytes(
@@ -99,4 +95,12 @@ func (tx *Transaction) Validate(identityProvider *identity_provider.IdentityProv
 		tx.PublicKey,
 		tx.Signature,
 	)
+}
+
+func (tx *Transaction) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+	if !tx.TxBody.Validate(identityProvider) || !tx.TxBody.CheckPublicKeyByRole(identityProvider, tx.PublicKey) {
+		return false
+	}
+
+	return tx.VerifySignature()
 }

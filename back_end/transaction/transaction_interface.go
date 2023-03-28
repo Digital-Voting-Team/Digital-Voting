@@ -8,4 +8,5 @@ type ITransaction interface {
 	Print()
 	GetTxType() TxType
 	Validate(identityProvider *identity_provider.IdentityProvider) bool
+	VerifySignature() bool
 }
