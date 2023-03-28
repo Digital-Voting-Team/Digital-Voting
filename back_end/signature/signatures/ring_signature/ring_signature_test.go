@@ -176,7 +176,7 @@ func Test_getHash(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getHash(tt.args.message, tt.args.lArray, tt.args.rArray); !reflect.DeepEqual(got, tt.want) && tt.wantBool {
+			if got := reflect.DeepEqual(getHash(tt.args.message, tt.args.lArray, tt.args.rArray), tt.want); got != tt.wantBool {
 				t.Errorf("getHash() = %v, want %v", got, tt.want)
 			}
 		})
@@ -241,7 +241,7 @@ func TestBytesToSignature(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := BytesToSignature(tt.args.data, tt.args.keyImage); tt.wantBool && !reflect.DeepEqual(*got, tt.want) {
+			if got := reflect.DeepEqual(*BytesToSignature(tt.args.data, tt.args.keyImage), tt.want); got != tt.wantBool {
 				t.Errorf("BytesToSignature() = %v, want %v", got, tt.want)
 			}
 		})
@@ -297,11 +297,9 @@ func TestSignatureToBytes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1 := signature.SignatureToBytes()
-			if tt.wantBool && !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("SignatureToBytes() got = %v, want %v", got, tt.want)
-			}
-			if tt.wantBool && !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf("SignatureToBytes() got1 = %v, want %v", got1, tt.want1)
+			gotBool := reflect.DeepEqual(got, tt.want) && reflect.DeepEqual(got1, tt.want1)
+			if gotBool != tt.wantBool {
+				t.Errorf("SignatureToBytes() got = %v, %v, want %v, %v", got, got1, tt.want, tt.want1)
 			}
 		})
 	}

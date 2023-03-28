@@ -173,7 +173,7 @@ func TestBytesToSignature(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := BytesToSignature(tt.args.data); tt.wantBool && !reflect.DeepEqual(*got, tt.want) {
+			if got := reflect.DeepEqual(*BytesToSignature(tt.args.data), tt.want); got != tt.wantBool {
 				t.Errorf("BytesToSignature() = %v, want %v", got, tt.want)
 			}
 		})
@@ -206,7 +206,7 @@ func TestSignatureToBytes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := signature.SignatureToBytes(); tt.wantBool && !reflect.DeepEqual(got, tt.want) {
+			if got := reflect.DeepEqual(signature.SignatureToBytes(), tt.want); got != tt.wantBool {
 				t.Errorf("SignatureToBytes() = %v, want %v", got, tt.want)
 			}
 		})
