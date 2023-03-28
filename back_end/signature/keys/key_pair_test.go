@@ -1,13 +1,13 @@
 package keys
 
 import (
-	"digital-voting/signature/curve"
+	crv "digital-voting/signature/curve"
 	"reflect"
 	"testing"
 )
 
 func TestBytesToPublic(t *testing.T) {
-	montgomeryCurve := curve.NewCurve25519()
+	montgomeryCurve := crv.NewCurve25519()
 	keyPair, _ := Random(montgomeryCurve)
 	keyPair1, _ := Random(montgomeryCurve)
 
@@ -20,7 +20,7 @@ func TestBytesToPublic(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     args
-		want     curve.Point
+		want     crv.Point
 		wantBool bool
 	}{
 		{
@@ -43,7 +43,8 @@ func TestBytesToPublic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			keyPair.BytesToPublic(tt.args.data)
-			if got := keyPair.GetPublicKey(); tt.wantBool && (!reflect.DeepEqual(got.X, tt.want.X) || !reflect.DeepEqual(got.Y, tt.want.Y)) {
+			public := keyPair.GetPublicKey()
+			if got := reflect.DeepEqual(public.X, tt.want.X) && reflect.DeepEqual(public.Y, tt.want.Y); got != tt.wantBool {
 				t.Errorf("BytesToPublic() = %v, want %v", got, tt.want)
 			}
 		})
@@ -51,7 +52,7 @@ func TestBytesToPublic(t *testing.T) {
 }
 
 func TestPublicToBytes(t *testing.T) {
-	keyPair, _ := Random(curve.NewCurve25519())
+	keyPair, _ := Random(crv.NewCurve25519())
 
 	publicKeyBytes := keyPair.PublicToBytes()
 
@@ -73,8 +74,55 @@ func TestPublicToBytes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := keyPair.PublicToBytes(); tt.wantBool && !reflect.DeepEqual(got, tt.want) {
+			publicBytes := keyPair.PublicToBytes()
+			if got := reflect.DeepEqual(publicBytes, tt.want); got != tt.wantBool {
 				t.Errorf("PublicToBytes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_newKeyPairFromPrivateKey(t *testing.T) {
+	private := PrivateKeyBytes{1}
+	public := PublicKeyBytes{3, 50, 184, 109, 215, 145, 12, 67, 215, 234, 153, 100, 93, 235, 162, 178, 10, 68, 251, 21, 43, 52, 151, 126, 226, 45, 190, 80, 119, 13, 3, 98, 8}
+	curve := crv.NewCurve25519()
+	keyPair := &KeyPair{curve: curve}
+	keyPair.BytesToPrivate(private)
+	keyPair.BytesToPublic(public)
+
+	type args struct {
+		privateKeyBytes PrivateKeyBytes
+		curve           crv.ICurve
+	}
+	tests := []struct {
+		name     string
+		args     args
+		want     KeyPair
+		wantBool bool
+	}{
+		{
+			name: "Correct key pair generation",
+			args: args{
+				privateKeyBytes: private,
+				curve:           curve,
+			},
+			want:     *keyPair,
+			wantBool: true,
+		},
+		{
+			name: "Incorrect key pair generation",
+			args: args{
+				privateKeyBytes: PrivateKeyBytes{2},
+				curve:           curve,
+			},
+			want:     *keyPair,
+			wantBool: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := reflect.DeepEqual(*newKeyPairFromPrivateKey(tt.args.privateKeyBytes, tt.args.curve), tt.want); got != tt.wantBool {
+				t.Errorf("newKeyPairFromPrivateKey() = %v, want %v", got, tt.want)
 			}
 		})
 	}

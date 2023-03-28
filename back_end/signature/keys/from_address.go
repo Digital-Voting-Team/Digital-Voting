@@ -1,7 +1,7 @@
 package keys
 
 import (
-	"digital-voting/signature/curve"
+	crv "digital-voting/signature/curve"
 	"digital-voting/signature/strkey"
 	"math/big"
 )
@@ -64,10 +64,10 @@ func (kp *FromAddress) GetPrivateKey() *big.Int {
 	return nil
 }
 
-func (kp *FromAddress) GetPublicKey() *curve.Point {
+func (kp *FromAddress) GetPublicKey() *crv.Point {
 	return nil
 }
 
-func (kp *FromAddress) GetKeyImage() *curve.Point {
+func (kp *FromAddress) GetKeyImage() *crv.Point {
 	return nil
 }

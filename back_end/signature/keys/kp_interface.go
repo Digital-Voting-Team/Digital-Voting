@@ -2,7 +2,7 @@ package keys
 
 import (
 	"crypto/rand"
-	"digital-voting/signature/curve"
+	crv "digital-voting/signature/curve"
 	"digital-voting/signature/strkey"
 	"errors"
 	"io"
@@ -30,12 +30,16 @@ type KP interface {
 	FromAddress() (*FromAddress, error)
 	Hint() [4]byte
 	GetPrivateKey() *big.Int
-	GetPublicKey() *curve.Point
-	GetKeyImage() *curve.Point
+	GetPublicKey() *crv.Point
+	GetKeyImage() *crv.Point
+}
+
+func FromPrivateKey(privateKeyBytes PrivateKeyBytes, curve crv.ICurve) *KeyPair {
+	return newKeyPairFromPrivateKey(privateKeyBytes, curve)
 }
 
 // Random creates a random KeyPair keys
-func Random(curve curve.ICurve) (*KeyPair, error) {
+func Random(curve crv.ICurve) (*KeyPair, error) {
 	var rawSeed [32]byte
 
 	_, err := io.ReadFull(rand.Reader, rawSeed[:])
@@ -54,7 +58,7 @@ func Random(curve curve.ICurve) (*KeyPair, error) {
 // Parse constructs a new KP from the provided string, which should be either
 // an address, or a seed. If the provided input is a seed, the resulting KP
 // will have signing capabilities.
-func Parse(addressOrSeed string, curve curve.ICurve) (KP, error) {
+func Parse(addressOrSeed string, curve crv.ICurve) (KP, error) {
 	addr, err := ParseAddress(addressOrSeed)
 	if err == nil {
 		return addr, nil
@@ -75,11 +79,11 @@ func ParseAddress(address string) (*FromAddress, error) {
 
 // ParseKeyPair constructs a new KeyPair keys from the provided string, which should
 // be a seed.
-func ParseKeyPair(seed string, curve curve.ICurve) (*KeyPair, error) {
+func ParseKeyPair(seed string, curve crv.ICurve) (*KeyPair, error) {
 	return newKeyPair(seed, curve)
 }
 
 // FromRawSeed creates a new keys from the provided raw ED25519 seed
-func FromRawSeed(rawSeed [32]byte, curve curve.ICurve) (*KeyPair, error) {
+func FromRawSeed(rawSeed [32]byte, curve crv.ICurve) (*KeyPair, error) {
 	return newKeyPairFromRawSeed(rawSeed, curve)
 }
