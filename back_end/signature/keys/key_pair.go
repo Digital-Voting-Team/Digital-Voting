@@ -2,7 +2,7 @@ package keys
 
 import (
 	"bytes"
-	"digital-voting/signature/curve"
+	crv "digital-voting/signature/curve"
 	"digital-voting/signature/signatures/utils"
 	"digital-voting/signature/strkey"
 	"encoding/hex"
@@ -32,15 +32,15 @@ type KeyPair struct {
 	address    string
 	seed       string
 	privateKey *big.Int
-	publicKey  *curve.Point
-	curve      curve.ICurve
+	publicKey  *crv.Point
+	curve      crv.ICurve
 }
 
 func (kp *KeyPair) SetPrivateKey(privateKey *big.Int) {
 	kp.privateKey = privateKey
 }
 
-func (kp *KeyPair) SetPublicKey(publicKey *curve.Point) {
+func (kp *KeyPair) SetPublicKey(publicKey *crv.Point) {
 	kp.publicKey = publicKey
 }
 
@@ -64,7 +64,7 @@ func (kp *KeyPair) PublicToBytes() PublicKeyBytes {
 }
 
 func (kp *KeyPair) BytesToPublic(data PublicKeyBytes) {
-	kp.publicKey = kp.curve.UnmarshalCompressed(curve.PointCompressed(data))
+	kp.publicKey = kp.curve.UnmarshalCompressed(crv.PointCompressed(data))
 }
 
 // Seed is seed getter.
@@ -83,7 +83,7 @@ func (kp *KeyPair) GetPrivateKey() *big.Int {
 }
 
 // GetPublicKey is public key getter.
-func (kp *KeyPair) GetPublicKey() *curve.Point {
+func (kp *KeyPair) GetPublicKey() *crv.Point {
 	return kp.publicKey
 }
 
@@ -113,7 +113,7 @@ func (kp *KeyPair) Equal(f *KeyPair) bool {
 	return kp.seed == f.seed
 }
 
-func newKeyPair(seed string, curve curve.ICurve) (*KeyPair, error) {
+func newKeyPair(seed string, curve crv.ICurve) (*KeyPair, error) {
 	rawSeed, err := strkey.Decode(strkey.VersionByteSeed, seed)
 	if err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func newKeyPair(seed string, curve curve.ICurve) (*KeyPair, error) {
 	}, nil
 }
 
-func newKeyPairFromRawSeed(rawSeed [32]byte, curve curve.ICurve) (*KeyPair, error) {
+func newKeyPairFromRawSeed(rawSeed [32]byte, curve crv.ICurve) (*KeyPair, error) {
 	seed, err := strkey.Encode(strkey.VersionByteSeed, rawSeed[:])
 	if err != nil {
 		return nil, err
@@ -171,6 +171,16 @@ func newKeyPairFromRawSeed(rawSeed [32]byte, curve curve.ICurve) (*KeyPair, erro
 	}, nil
 }
 
+func newKeyPairFromPrivateKey(privateKeyBytes PrivateKeyBytes, curve crv.ICurve) *KeyPair {
+	private := new(big.Int).SetBytes(privateKeyBytes[:])
+	public := getPublicKey(private, curve)
+	return &KeyPair{
+		privateKey: private,
+		publicKey:  public,
+		curve:      curve,
+	}
+}
+
 func genPrivateKey(reader io.Reader) *big.Int {
 	seed := make([]byte, 32)
 	if _, err := io.ReadFull(reader, seed); err != nil {
@@ -180,11 +190,11 @@ func genPrivateKey(reader io.Reader) *big.Int {
 	return utils.Hex2int(hex.EncodeToString(seed))
 }
 
-func getPublicKey(d *big.Int, curve curve.ICurve) *curve.Point {
+func getPublicKey(d *big.Int, curve crv.ICurve) *crv.Point {
 	return curve.G().Mul(d)
 }
 
-func (kp *KeyPair) GetKeyImage() *curve.Point {
+func (kp *KeyPair) GetKeyImage() *crv.Point {
 	pKey := new(big.Int).Set(kp.privateKey)
 
 	keyImage, err := kp.curve.MulPoint(pKey, kp.curve.ComputeDeterministicHash(kp.publicKey))
