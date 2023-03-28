@@ -12,10 +12,10 @@ func TestBytesToPublic(t *testing.T) {
 	keyPair1, _ := Random(montgomeryCurve)
 
 	publicKey := keyPair.GetPublicKey()
-	publicKeyBytes := publicKey.PointToBytes()
+	publicKeyBytes := keyPair.PublicToBytes()
 
 	type args struct {
-		data [33]byte
+		data PublicKeyBytes
 	}
 	tests := []struct {
 		name     string
@@ -53,12 +53,11 @@ func TestBytesToPublic(t *testing.T) {
 func TestPublicToBytes(t *testing.T) {
 	keyPair, _ := Random(curve.NewCurve25519())
 
-	publicKey := keyPair.GetPublicKey()
-	publicKeyBytes := publicKey.PointToBytes()
+	publicKeyBytes := keyPair.PublicToBytes()
 
 	tests := []struct {
 		name     string
-		want     [33]byte
+		want     PublicKeyBytes
 		wantBool bool
 	}{
 		{
@@ -68,7 +67,7 @@ func TestPublicToBytes(t *testing.T) {
 		},
 		{
 			name:     "Incorrect conversion to bytes",
-			want:     [33]byte{12, 10, 11},
+			want:     PublicKeyBytes{12, 10, 11},
 			wantBool: false,
 		},
 	}

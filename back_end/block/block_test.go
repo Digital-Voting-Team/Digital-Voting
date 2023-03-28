@@ -1,6 +1,8 @@
 package block
 
 import (
+	"digital-voting/signature/keys"
+	signatures "digital-voting/signature/signatures/single_signature"
 	"testing"
 	"time"
 )
@@ -29,8 +31,8 @@ func TestBlock(t *testing.T) {
 		t.Errorf("Got %s, instead of %s", got, expect)
 	}
 
-	var key = [33]byte{1, 2, 4, 41, 23}
-	var signature = [65]byte{6, 12, 9, 4, 3}
+	var key = keys.PublicKeyBytes{1, 2, 4, 41, 23}
+	var signature = signatures.SingleSignatureBytes{6, 12, 9, 4, 3}
 
 	b.Sign(key, signature)
 

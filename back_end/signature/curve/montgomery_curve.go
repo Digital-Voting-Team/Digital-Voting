@@ -123,15 +123,15 @@ func NewCurve25519() *MontgomeryCurve {
 	}
 }
 
-func (mc *MontgomeryCurve) MarshalCompressed(point *Point) [33]byte {
+func (mc *MontgomeryCurve) MarshalCompressed(point *Point) PointCompressed {
 	// TODO: think of different lengths
-	compressed := [33]byte{}
+	compressed := PointCompressed{}
 	compressed[0] = byte(point.Y.Bit(0)) | 2
 	point.X.FillBytes(compressed[1:])
 	return compressed
 }
 
-func (mc *MontgomeryCurve) UnmarshalCompressed(data [33]byte) (point *Point) {
+func (mc *MontgomeryCurve) UnmarshalCompressed(data PointCompressed) (point *Point) {
 	// TODO: think of different lengths
 	result := &Point{nil, nil, mc}
 

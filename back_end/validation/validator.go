@@ -13,7 +13,7 @@ import (
 
 type Validator struct {
 	KeyPair              *keys.KeyPair
-	ValidatorsPublicKeys map[[33]byte]struct{}
+	ValidatorsPublicKeys map[keys.PublicKeyBytes]struct{}
 	// TODO: think of data structure to store in future
 	ValidatorsAddresses []any
 	MemPool             []transaction.ITransaction
@@ -54,11 +54,13 @@ func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
 		MerkleRoot: merkle_tree.GetMerkleRoot(blockBody.Transactions),
 	}
 
-	// Sign block
+	// Create block itself
 	newBlock := &block.Block{
 		Header: blockHeader,
 		Body:   blockBody,
 	}
+
+	// Sign block
 	v.SignBlock(newBlock)
 
 	return newBlock

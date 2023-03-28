@@ -16,8 +16,8 @@ type ICurve interface {
 	NegPoint(P *Point) (*Point, error)
 	ComputeY(x *big.Int) *big.Int
 	ComputeDeterministicHash(P *Point) *Point
-	MarshalCompressed(point *Point) [33]byte
-	UnmarshalCompressed(data [33]byte) (point *Point)
+	MarshalCompressed(point *Point) PointCompressed
+	UnmarshalCompressed(data PointCompressed) (point *Point)
 }
 
 type Curve struct {
@@ -156,14 +156,14 @@ func (c *Curve) ComputeDeterministicHash(P *Point) *Point {
 	panic("should not be called")
 }
 
-func (c *Curve) MarshalCompressed(point *Point) [33]byte {
+func (c *Curve) MarshalCompressed(point *Point) PointCompressed {
 	if c.Name == "Curve25519" {
 		return c.ConvertToMontgomeryCurve().MarshalCompressed(point)
 	}
 	panic("should not be called")
 }
 
-func (c *Curve) UnmarshalCompressed(data [33]byte) (point *Point) {
+func (c *Curve) UnmarshalCompressed(data PointCompressed) (point *Point) {
 	if c.Name == "Curve25519" {
 		return c.ConvertToMontgomeryCurve().UnmarshalCompressed(data)
 	}

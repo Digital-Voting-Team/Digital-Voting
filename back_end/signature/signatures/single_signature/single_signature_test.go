@@ -1,24 +1,22 @@
 package signatures
 
 import (
-	"crypto/sha256"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	"log"
 	"math/big"
 	"reflect"
 	"testing"
-	"time"
 )
 
 func TestKeyGeneration(t *testing.T) {
 	sign := NewECDSA()
-	keyPair1, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair1, err := keys.Random(sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	keyPair2, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair2, err := keys.Random(sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -39,12 +37,12 @@ func TestKeyGeneration(t *testing.T) {
 
 func TestVerify(t *testing.T) {
 	sign := NewECDSA()
-	keyPair1, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair1, err := keys.Random(sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	keyPair2, err := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair2, err := keys.Random(sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -139,7 +137,7 @@ func TestVerify(t *testing.T) {
 
 func TestBytesToSignature(t *testing.T) {
 	sign := NewECDSA()
-	keyPair, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair, _ := keys.Random(sign.Curve)
 	message := "1"
 
 	signature := sign.Sign(message, keyPair.GetPrivateKey())
@@ -148,7 +146,7 @@ func TestBytesToSignature(t *testing.T) {
 	signature1 := sign.Sign(message+"1", keyPair.GetPrivateKey())
 
 	type args struct {
-		data [65]byte
+		data SingleSignatureBytes
 	}
 	tests := []struct {
 		name     string
@@ -184,7 +182,7 @@ func TestBytesToSignature(t *testing.T) {
 
 func TestSignatureToBytes(t *testing.T) {
 	sign := NewECDSA()
-	keyPair, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair, _ := keys.Random(sign.Curve)
 	message := "1"
 
 	signature := sign.Sign(message, keyPair.GetPrivateKey())
@@ -192,7 +190,7 @@ func TestSignatureToBytes(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		want     [65]byte
+		want     SingleSignatureBytes
 		wantBool bool
 	}{
 		{
@@ -202,7 +200,7 @@ func TestSignatureToBytes(t *testing.T) {
 		},
 		{
 			name:     "Incorrect conversion to bytes",
-			want:     [65]byte{12, 10, 11},
+			want:     SingleSignatureBytes{12, 10, 11},
 			wantBool: false,
 		},
 	}

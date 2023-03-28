@@ -4,17 +4,18 @@ import (
 	"crypto/sha256"
 	"digital-voting/account"
 	"digital-voting/identity_provider"
+	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 )
 
 type TxAccountCreation struct {
-	AccountType  account.Type `json:"account_type"`
-	NewPublicKey [33]byte     `json:"new_public_key"`
+	AccountType  account.Type        `json:"account_type"`
+	NewPublicKey keys.PublicKeyBytes `json:"new_public_key"`
 }
 
-func NewTxAccCreation(accountType account.Type, newPublicKey [33]byte) *TxAccountCreation {
+func NewTxAccCreation(accountType account.Type, newPublicKey keys.PublicKeyBytes) *TxAccountCreation {
 	return &TxAccountCreation{AccountType: accountType, NewPublicKey: newPublicKey}
 }
 
@@ -44,7 +45,7 @@ func (tx *TxAccountCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxAccountCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
+func (tx *TxAccountCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
 	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.RegistrationAdmin)
 }
 

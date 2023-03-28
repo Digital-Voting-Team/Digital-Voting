@@ -3,7 +3,7 @@ package signatures
 import (
 	crypto "crypto/rand"
 	"crypto/sha1"
-	curve2 "digital-voting/signature/curve"
+	crv "digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	"digital-voting/signature/signatures/utils"
 	"encoding/hex"
@@ -14,12 +14,12 @@ import (
 )
 
 type ECDSA struct {
-	GenPoint *curve2.Point
-	Curve    *curve2.MontgomeryCurve
+	GenPoint *crv.Point
+	Curve    *crv.MontgomeryCurve
 }
 
 func NewECDSA() *ECDSA {
-	curve := curve2.NewCurve25519()
+	curve := crv.NewCurve25519()
 	return &ECDSA{
 		GenPoint: curve.G(),
 		Curve:    curve,
@@ -31,12 +31,14 @@ type SingleSignature struct {
 	S *big.Int `json:"s"`
 }
 
-func (ss *SingleSignature) SignatureToBytes() [65]byte {
+type SingleSignatureBytes [65]byte
+
+func (ss *SingleSignature) SignatureToBytes() SingleSignatureBytes {
 	// result[0] -> version
 	// result[1:32] -> R
 	// result[32:] -> S
 
-	result := [65]byte{}
+	result := SingleSignatureBytes{}
 	result[0] = '0'
 	ss.R.FillBytes(result[1:33])
 	ss.S.FillBytes(result[33:])
@@ -44,14 +46,14 @@ func (ss *SingleSignature) SignatureToBytes() [65]byte {
 	return result
 }
 
-func BytesToSignature(data [65]byte) *SingleSignature {
+func BytesToSignature(data SingleSignatureBytes) *SingleSignature {
 	//version := data[0]
 	rInt := new(big.Int).SetBytes(data[1:33])
 	sInt := new(big.Int).SetBytes(data[33:])
 	return &SingleSignature{R: rInt, S: sInt}
 }
 
-func (ec *ECDSA) SignBytes(message string, privateKey [32]byte) *SingleSignature {
+func (ec *ECDSA) SignBytes(message string, privateKey keys.PrivateKeyBytes) *SingleSignature {
 	keyPair := new(keys.KeyPair)
 	keyPair.BytesToPrivate(privateKey)
 
@@ -96,14 +98,14 @@ func (ec *ECDSA) Sign(message string, privateKey *big.Int) *SingleSignature {
 	return &SingleSignature{R: &r, S: &s}
 }
 
-func (ec *ECDSA) VerifyBytes(message string, publicKey [33]byte, signature [65]byte) bool {
-	pubKey := curve2.BytesToPoint(publicKey, ec.Curve)
+func (ec *ECDSA) VerifyBytes(message string, publicKey keys.PublicKeyBytes, signature SingleSignatureBytes) bool {
+	pubKey := crv.BytesToPoint(crv.PointCompressed(publicKey), ec.Curve)
 	sig := BytesToSignature(signature)
 
 	return ec.Verify(message, pubKey, sig)
 }
 
-func (ec *ECDSA) Verify(message string, publicKey *curve2.Point, signature *SingleSignature) bool {
+func (ec *ECDSA) Verify(message string, publicKey *crv.Point, signature *SingleSignature) bool {
 	// 1. Verify that r and s are integers in the interval [1, n - 1].
 	if !utils.CheckInterval(signature.R, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) ||
 		!utils.CheckInterval(signature.S, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) {

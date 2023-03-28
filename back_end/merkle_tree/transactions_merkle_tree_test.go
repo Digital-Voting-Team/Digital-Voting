@@ -1,7 +1,6 @@
 package merkle_tree
 
 import (
-	"crypto/sha256"
 	"digital-voting/account"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
@@ -14,7 +13,7 @@ import (
 func TestVerifyContent(t *testing.T) {
 	sign := singleSignature.NewECDSA()
 
-	keyPair1, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair1, _ := keys.Random(sign.Curve)
 
 	transactions := []transaction.ITransaction{}
 
@@ -23,7 +22,7 @@ func TestVerifyContent(t *testing.T) {
 	transactions = append(transactions, myTransaction)
 
 	groupName := "EPS-41"
-	membersPublicKeys := [][33]byte{}
+	membersPublicKeys := []keys.PublicKeyBytes{}
 	membersPublicKeys = append(membersPublicKeys, keyPair1.PublicToBytes())
 	txBody1 := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
 	transaction1 := transaction.NewTransaction(transaction.GroupCreation, txBody1)

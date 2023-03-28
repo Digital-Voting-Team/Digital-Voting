@@ -7,17 +7,19 @@ import (
 	"math/big"
 )
 
+type PointCompressed [33]byte
+
 type Point struct {
 	X     *big.Int
 	Y     *big.Int
 	Curve ICurve
 }
 
-func (p *Point) PointToBytes() [33]byte {
+func (p *Point) PointToBytes() PointCompressed {
 	return p.Curve.MarshalCompressed(p)
 }
 
-func BytesToPoint(data [33]byte, curve ICurve) *Point {
+func BytesToPoint(data PointCompressed, curve ICurve) *Point {
 	return curve.UnmarshalCompressed(data)
 }
 

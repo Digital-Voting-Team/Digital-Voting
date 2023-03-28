@@ -3,6 +3,7 @@ package transaction
 import (
 	"crypto/sha256"
 	"digital-voting/identity_provider"
+	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
 	"encoding/base64"
 	"encoding/json"
@@ -22,19 +23,19 @@ const (
 )
 
 type Transaction struct {
-	TxType    TxType   `json:"tx_type"`
-	TxBody    TxBody   `json:"tx_body"`
-	Data      []byte   `json:"data"`
-	Nonce     uint32   `json:"nonce"`
-	Signature [65]byte `json:"signature"`
-	PublicKey [33]byte `json:"public_key"`
+	TxType    TxType                               `json:"tx_type"`
+	TxBody    TxBody                               `json:"tx_body"`
+	Data      []byte                               `json:"data"`
+	Nonce     uint32                               `json:"nonce"`
+	Signature singleSignature.SingleSignatureBytes `json:"signature"`
+	PublicKey keys.PublicKeyBytes                  `json:"public_key"`
 }
 
 func (tx *Transaction) GetTxType() TxType {
 	return tx.TxType
 }
 
-func (tx *Transaction) Sign(publicKey [33]byte, signature [65]byte) {
+func (tx *Transaction) Sign(publicKey keys.PublicKeyBytes, signature singleSignature.SingleSignatureBytes) {
 	tx.Signature = signature
 	tx.PublicKey = publicKey
 }

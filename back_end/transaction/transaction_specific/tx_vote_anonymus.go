@@ -3,6 +3,7 @@ package transaction_specific
 import (
 	"crypto/sha256"
 	"digital-voting/identity_provider"
+	"digital-voting/signature/keys"
 	ringSignature "digital-voting/signature/signatures/ring_signature"
 	tx "digital-voting/transaction"
 	"encoding/base64"
@@ -13,14 +14,14 @@ import (
 )
 
 type TxVoteAnonymous struct {
-	TxType        tx.TxType  `json:"tx_type"`
-	VotingLink    [32]byte   `json:"voting_link"`
-	Answer        uint8      `json:"answer"`
-	Data          []byte     `json:"data"`
-	Nonce         uint32     `json:"nonce"`
-	RingSignature [][65]byte `json:"ring_signature"`
-	KeyImage      [33]byte   `json:"key_image"`
-	PublicKeys    [][33]byte `json:"public_keys"`
+	TxType        tx.TxType                        `json:"tx_type"`
+	VotingLink    [32]byte                         `json:"voting_link"`
+	Answer        uint8                            `json:"answer"`
+	Data          []byte                           `json:"data"`
+	Nonce         uint32                           `json:"nonce"`
+	RingSignature ringSignature.RingSignatureBytes `json:"ring_signature"`
+	KeyImage      ringSignature.KeyImageBytes      `json:"key_image"`
+	PublicKeys    []keys.PublicKeyBytes            `json:"public_keys"`
 }
 
 func (tx *TxVoteAnonymous) GetTxType() tx.TxType {
@@ -31,7 +32,7 @@ func NewTxVoteAnonymous(votingLink [32]byte, answer uint8) *TxVoteAnonymous {
 	return &TxVoteAnonymous{TxType: tx.VoteAnonymous, VotingLink: votingLink, Answer: answer, Nonce: uint32(rand.Int())}
 }
 
-func (tx *TxVoteAnonymous) Sign(publicKeys [][33]byte, signature [][65]byte, keyImage [33]byte) {
+func (tx *TxVoteAnonymous) Sign(publicKeys []keys.PublicKeyBytes, signature ringSignature.RingSignatureBytes, keyImage ringSignature.KeyImageBytes) {
 	tx.PublicKeys = publicKeys
 	tx.RingSignature = signature
 	tx.KeyImage = keyImage

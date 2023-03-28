@@ -3,6 +3,7 @@ package transaction_specific
 import (
 	"crypto/sha256"
 	"digital-voting/identity_provider"
+	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -13,7 +14,8 @@ type TxVotingCreation struct {
 	ExpirationDate    uint32      `json:"expiration_date"`
 	VotingDescription [1024]byte  `json:"voting_description"`
 	Answers           [][256]byte `json:"answers"`
-	Whitelist         [][33]byte  `json:"whitelist"`
+	// Not a keys.PublicKeyBytes since it can be group identifier as well
+	Whitelist [][33]byte `json:"whitelist"`
 }
 
 func NewTxVotingCreation(expirationDate time.Time, votingDescription string, answers []string, whitelist [][33]byte) *TxVotingCreation {
@@ -56,7 +58,7 @@ func (tx *TxVotingCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxVotingCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey [33]byte) bool {
+func (tx *TxVotingCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
 	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.VotingCreationAdmin)
 }
 

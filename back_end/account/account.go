@@ -1,5 +1,7 @@
 package account
 
+import "digital-voting/signature/keys"
+
 type Type uint8
 
 const (
@@ -9,6 +11,6 @@ const (
 )
 
 type Account struct {
-	Type      Type     `json:"type"`
-	PublicKey [33]byte `json:"public_key"`
+	Type      Type                `json:"type"`
+	PublicKey keys.PublicKeyBytes `json:"public_key"`
 }

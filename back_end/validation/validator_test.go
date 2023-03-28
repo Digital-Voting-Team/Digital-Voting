@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"crypto/sha256"
 	"digital-voting/account"
 	"digital-voting/block"
 	"digital-voting/identity_provider"
@@ -18,8 +17,8 @@ func TestIsInMemPool(t *testing.T) {
 	v := &Validator{}
 
 	groupName := "EPS-41"
-	membersPublicKeys := [][33]byte{}
-	membersPublicKeys = append(membersPublicKeys, [33]byte{1, 2, 3})
+	membersPublicKeys := []keys.PublicKeyBytes{}
+	membersPublicKeys = append(membersPublicKeys, keys.PublicKeyBytes{1, 2, 3})
 	grpCreationBody := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
 	txGroupCreation := transaction.NewTransaction(transaction.GroupCreation, grpCreationBody)
 	v.MemPool = append(v.MemPool, txGroupCreation)
@@ -32,7 +31,7 @@ func TestIsInMemPool(t *testing.T) {
 	txVotingCreation := transaction.NewTransaction(transaction.VotingCreation, votingCreationBody)
 	v.MemPool = append(v.MemPool, txVotingCreation)
 
-	accCreationBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, [33]byte{1, 2, 3})
+	accCreationBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, keys.PublicKeyBytes{1, 2, 3})
 	txAccountCreation := transaction.NewTransaction(transaction.AccountCreation, accCreationBody)
 
 	type args struct {
@@ -71,19 +70,19 @@ func TestCreateBlock(t *testing.T) {
 	sign := singleSignature.NewECDSA()
 	txSigner := signer.NewTransactionSigner()
 	identityProvider := identity_provider.NewIdentityProvider()
-	keyPair1, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair1, _ := keys.Random(sign.Curve)
 
 	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.User)
 	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.VotingCreationAdmin)
 	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.RegistrationAdmin)
 
-	keyPair2, _ := keys.FromRawSeed(sha256.Sum256([]byte(time.Now().String())), sign.Curve)
+	keyPair2, _ := keys.Random(sign.Curve)
 	accCreationBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, keyPair2.PublicToBytes())
 	txAccountCreation := transaction.NewTransaction(transaction.AccountCreation, accCreationBody)
 	txSigner.SignTransaction(keyPair1, txAccountCreation)
 
 	groupName := "EPS-41"
-	membersPublicKeys := [][33]byte{}
+	membersPublicKeys := []keys.PublicKeyBytes{}
 	membersPublicKeys = append(membersPublicKeys, keyPair1.PublicToBytes())
 	grpCreationBody := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
 	txGroupCreation := transaction.NewTransaction(transaction.GroupCreation, grpCreationBody)
