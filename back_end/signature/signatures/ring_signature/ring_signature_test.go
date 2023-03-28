@@ -1,7 +1,7 @@
 package signatures
 
 import (
-	curve2 "digital-voting/signature/curve"
+	crv "digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	"log"
 	"math/big"
@@ -17,7 +17,7 @@ func TestVerifySignature(t *testing.T) {
 	}
 	publicKey := keyPair.GetPublicKey()
 
-	var publicKeys []*curve2.Point
+	var publicKeys []*crv.Point
 	publicKeys = append(publicKeys, publicKey)
 
 	for i := 0; i < 5; i++ {
@@ -42,7 +42,7 @@ func TestVerifySignature(t *testing.T) {
 		log.Panicln(err)
 	}
 
-	var publicKeys1 []*curve2.Point
+	var publicKeys1 []*crv.Point
 
 	for i := 0; i < 5; i++ {
 		tempKeyPair, err := keys.Random(sign.Curve)
@@ -53,13 +53,13 @@ func TestVerifySignature(t *testing.T) {
 	}
 
 	type fields struct {
-		KeyImage *curve2.Point
+		KeyImage *crv.Point
 		CList    []*big.Int
 		RList    []*big.Int
 	}
 	type args struct {
 		message    string
-		publicKeys []*curve2.Point
+		publicKeys []*crv.Point
 	}
 	tests := []struct {
 		name   string
@@ -136,16 +136,16 @@ func TestVerifySignature(t *testing.T) {
 
 func Test_getHash(t *testing.T) {
 	sign := NewECDSA_RS()
-	var lArray []*curve2.Point
-	var rArray []*curve2.Point
+	var lArray []*crv.Point
+	var rArray []*crv.Point
 
 	lArray = append(lArray, sign.GenPoint)
 	rArray = append(rArray, sign.GenPoint)
 
 	type args struct {
 		message string
-		lArray  []*curve2.Point
-		rArray  []*curve2.Point
+		lArray  []*crv.Point
+		rArray  []*crv.Point
 	}
 	tests := []struct {
 		name     string
@@ -192,7 +192,7 @@ func TestBytesToSignature(t *testing.T) {
 	}
 	publicKey := keyPair.GetPublicKey()
 
-	var publicKeys []*curve2.Point
+	var publicKeys []*crv.Point
 	publicKeys = append(publicKeys, publicKey)
 
 	for i := 0; i < 5; i++ {
@@ -257,7 +257,7 @@ func TestSignatureToBytes(t *testing.T) {
 	}
 	publicKey := keyPair.GetPublicKey()
 
-	var publicKeys []*curve2.Point
+	var publicKeys []*crv.Point
 	publicKeys = append(publicKeys, publicKey)
 
 	for i := 0; i < 5; i++ {
