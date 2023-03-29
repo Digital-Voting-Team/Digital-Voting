@@ -161,6 +161,19 @@ func TestActualizeIdentityProvider(t *testing.T) {
 	txSigner.SignTransaction(adminKeyPair, transaction)
 
 	validator.AddToMemPool(transaction)
+
+	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.VotingCreationAdmin)
+	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.User)
+	expirationDate := time.Now()
+	votingDescr := "EPS-41 supervisor voting"
+	answers := []string{"Veres M.M.", "Chentsov O.I."}
+	whiteList := [][33]byte{adminKeyPair.PublicToBytes()}
+	votingCreationBody := tx_specific.NewTxVotingCreation(expirationDate, votingDescr, answers, whiteList)
+	txVotingCreation := tx.NewTransaction(tx.VotingCreation, votingCreationBody)
+	txSigner.SignTransaction(adminKeyPair, txVotingCreation)
+
+	validator.AddToMemPool(txVotingCreation)
+
 	block := validator.CreateBlock([32]byte{})
 
 	validator.ActualizeIdentityProvider(block)
