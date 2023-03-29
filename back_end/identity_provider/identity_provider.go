@@ -24,9 +24,9 @@ func NewIdentityProvider() *IdentityProvider {
 
 const (
 	User PubKeyType = iota
-	GroupIdentifier
 	RegistrationAdmin
 	VotingCreationAdmin
+	GroupIdentifier
 	Validator
 )
 
