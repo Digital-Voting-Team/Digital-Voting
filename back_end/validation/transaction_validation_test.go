@@ -20,9 +20,9 @@ func TestValidateTransaction(t *testing.T) {
 	identityProvider := identity_provider.NewIdentityProvider()
 
 	keyPair1, _ := keys.Random(sign.Curve)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.User)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.VotingCreationAdmin)
 	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.RegistrationAdmin)
+	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.VotingCreationAdmin)
+	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.User)
 
 	keyPair2, _ := keys.Random(sign.Curve)
 	accCreationBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, keyPair2.PublicToBytes())

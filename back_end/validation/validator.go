@@ -2,6 +2,7 @@ package validation
 
 import (
 	"digital-voting/block"
+	"digital-voting/blockchain"
 	"digital-voting/identity_provider"
 	"digital-voting/merkle_tree"
 	"digital-voting/signature/keys"
@@ -70,11 +71,12 @@ func (v *Validator) SignBlock(block *block.Block) {
 	v.BlockSigner.SignBlock(v.KeyPair, block)
 }
 
-type BlockChain interface {
-	AddBlock(block *block.Block)
+func (v *Validator) AddBlockToChain(blockChain *blockchain.Blockchain, block *block.Block) {
+	blockChain.AddBlock(block)
 }
 
-// AddBlockToChain TODO: add actual blockchain parameter after blockchain implementation
-func (v *Validator) AddBlockToChain(blockChain BlockChain, block *block.Block) {
-	blockChain.AddBlock(block)
+func (v *Validator) ActualizeIdentityProvider(block *block.Block) {
+	for _, transaction := range block.Body.Transactions {
+		transaction.ActualizeIndexedData(v.IdentityProvider)
+	}
 }
