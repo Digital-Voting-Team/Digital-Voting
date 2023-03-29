@@ -9,4 +9,5 @@ type ITransaction interface {
 	GetTxType() TxType
 	Validate(identityProvider *identity_provider.IdentityProvider) bool
 	VerifySignature() bool
+	ActualizeIndexedData(identityProvider *identity_provider.IdentityProvider)
 }

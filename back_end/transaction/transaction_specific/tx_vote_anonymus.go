@@ -96,3 +96,7 @@ func (tx *TxVoteAnonymous) Validate(identityProvider *identity_provider.Identity
 
 	return tx.VerifySignature()
 }
+
+func (tx *TxVoteAnonymous) ActualizeIndexedData(identityProvider *identity_provider.IdentityProvider) {
+
+}

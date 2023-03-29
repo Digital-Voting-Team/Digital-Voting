@@ -52,3 +52,7 @@ func (tx *TxVote) Validate(identityProvider *identity_provider.IdentityProvider)
 	// TODO: add a way of getting voting by its link to check connected data
 	return true
 }
+
+func (tx *TxVote) ActualizeIndexedData(identityProvider *identity_provider.IdentityProvider) {
+
+}

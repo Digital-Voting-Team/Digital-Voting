@@ -71,3 +71,7 @@ func (tx *TxVotingCreation) Validate(identityProvider *identity_provider.Identit
 	}
 	return true
 }
+
+func (tx *TxVotingCreation) ActualizeIndexedData(identityProvider *identity_provider.IdentityProvider) {
+
+}
