@@ -105,6 +105,6 @@ func (tx *Transaction) Validate(identityProvider *identity_provider.IdentityProv
 	return tx.VerifySignature()
 }
 
-func (tx *Transaction) ActualizeIndexedData(identityProvider *identity_provider.IdentityProvider) {
-	tx.TxBody.ActualizeIndexedData(identityProvider)
+func (tx *Transaction) GetTxBody() TxBody {
+	return tx.TxBody
 }

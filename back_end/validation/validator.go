@@ -75,8 +75,15 @@ func (v *Validator) AddBlockToChain(blockChain *blockchain.Blockchain, block *bl
 	blockChain.AddBlock(block)
 }
 
+type Actualizer interface {
+	ActualizeIndexedData(identityProvider *identity_provider.IdentityProvider)
+}
+
 func (v *Validator) ActualizeIdentityProvider(block *block.Block) {
 	for _, transaction := range block.Body.Transactions {
-		transaction.ActualizeIndexedData(v.IdentityProvider)
+		txExact, ok := transaction.GetTxBody().(Actualizer)
+		if ok {
+			txExact.ActualizeIndexedData(v.IdentityProvider)
+		}
 	}
 }
