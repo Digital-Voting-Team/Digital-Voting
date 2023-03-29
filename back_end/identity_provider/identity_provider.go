@@ -10,8 +10,6 @@ type IdentityProvider struct {
 	ValidatorPubKeys          map[keys.PublicKeyBytes]struct{}
 }
 
-type PubKeyType int
-
 func NewIdentityProvider() *IdentityProvider {
 	return &IdentityProvider{
 		UserPubKeys:               map[keys.PublicKeyBytes]struct{}{},
@@ -22,15 +20,17 @@ func NewIdentityProvider() *IdentityProvider {
 	}
 }
 
+type Identifier int
+
 const (
-	User PubKeyType = iota
+	User Identifier = iota
 	RegistrationAdmin
 	VotingCreationAdmin
 	GroupIdentifier
 	Validator
 )
 
-func (ip *IdentityProvider) AddPubKey(publicKey keys.PublicKeyBytes, keyType PubKeyType) {
+func (ip *IdentityProvider) AddPubKey(publicKey keys.PublicKeyBytes, keyType Identifier) {
 	switch keyType {
 	case User:
 		_, exists := ip.UserPubKeys[publicKey]
@@ -60,7 +60,7 @@ func (ip *IdentityProvider) AddPubKey(publicKey keys.PublicKeyBytes, keyType Pub
 	}
 }
 
-func (ip *IdentityProvider) CheckPubKeyPresence(publicKey keys.PublicKeyBytes, keyType PubKeyType) bool {
+func (ip *IdentityProvider) CheckPubKeyPresence(publicKey keys.PublicKeyBytes, keyType Identifier) bool {
 	switch keyType {
 	case User:
 		_, exists := ip.UserPubKeys[publicKey]
@@ -82,7 +82,7 @@ func (ip *IdentityProvider) CheckPubKeyPresence(publicKey keys.PublicKeyBytes, k
 	}
 }
 
-func (ip *IdentityProvider) RemovePubKey(publicKey keys.PublicKeyBytes, keyType PubKeyType) {
+func (ip *IdentityProvider) RemovePubKey(publicKey keys.PublicKeyBytes, keyType Identifier) {
 	switch keyType {
 	case User:
 		delete(ip.UserPubKeys, publicKey)
