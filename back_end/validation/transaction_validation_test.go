@@ -32,7 +32,7 @@ func TestValidateTransaction(t *testing.T) {
 	groupName := "EPS-41"
 	membersPublicKeys := []keys.PublicKeyBytes{}
 	membersPublicKeys = append(membersPublicKeys, keyPair1.PublicToBytes())
-	grpCreationBody := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
+	grpCreationBody := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys)
 	txGroupCreation := transaction.NewTransaction(transaction.GroupCreation, grpCreationBody)
 	txSigner.SignTransaction(keyPair1, txGroupCreation)
 

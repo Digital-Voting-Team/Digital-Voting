@@ -80,7 +80,7 @@ func main() {
 		"Black or White?",
 		[]string{"Black", "White", "Both"},
 		whitelist))
-	txGroup := tx.NewTransaction(tx.GroupCreation, stx.NewTxGroupCreation("IPS-41", members...))
+	txGroup := tx.NewTransaction(tx.GroupCreation, stx.NewTxGroupCreation("IPS-41", members))
 
 	txSigner.SignTransaction(adminKeyPair, txVoting)
 	txSigner.SignTransaction(adminKeyPair, txGroup)

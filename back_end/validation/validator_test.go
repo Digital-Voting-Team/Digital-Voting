@@ -4,6 +4,7 @@ import (
 	"digital-voting/account"
 	blk "digital-voting/block"
 	ip "digital-voting/identity_provider"
+	"digital-voting/merkle_tree"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
 	"digital-voting/signer"
@@ -19,7 +20,7 @@ func TestIsInMemPool(t *testing.T) {
 	groupName := "EPS-41"
 	membersPublicKeys := []keys.PublicKeyBytes{}
 	membersPublicKeys = append(membersPublicKeys, keys.PublicKeyBytes{1, 2, 3})
-	grpCreationBody := tx_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
+	grpCreationBody := tx_specific.NewTxGroupCreation(groupName, membersPublicKeys)
 	txGroupCreation := tx.NewTransaction(tx.GroupCreation, grpCreationBody)
 	v.MemPool = append(v.MemPool, txGroupCreation)
 
@@ -84,7 +85,7 @@ func TestCreateBlock(t *testing.T) {
 	groupName := "EPS-41"
 	membersPublicKeys := []keys.PublicKeyBytes{}
 	membersPublicKeys = append(membersPublicKeys, keyPair1.PublicToBytes())
-	grpCreationBody := tx_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
+	grpCreationBody := tx_specific.NewTxGroupCreation(groupName, membersPublicKeys)
 	txGroupCreation := tx.NewTransaction(tx.GroupCreation, grpCreationBody)
 	txSigner.SignTransaction(keyPair1, txGroupCreation)
 
@@ -110,7 +111,20 @@ func TestCreateBlock(t *testing.T) {
 	validator.AddToMemPool(txVotingCreation)
 	validator.AddToMemPool(txVote)
 
-	newBlock := validator.CreateBlock([32]byte{})
+	blockBody := blk.Body{
+		Transactions: validator.MemPool,
+	}
+	timeStamp := uint64(time.Unix(1494505756, 0).Unix())
+	blockHeader := blk.Header{
+		Previous:   [32]byte{},
+		TimeStamp:  timeStamp,
+		MerkleRoot: merkle_tree.GetMerkleRoot(blockBody.Transactions),
+	}
+	testBlock := &blk.Block{
+		Header: blockHeader,
+		Body:   blockBody,
+	}
+	validator.SignBlock(testBlock)
 
 	type args struct {
 		previousBlockHash [32]byte
@@ -125,12 +139,16 @@ func TestCreateBlock(t *testing.T) {
 			args: args{
 				previousBlockHash: [32]byte{},
 			},
-			want: newBlock,
+			want: testBlock,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := validator.CreateBlock(tt.args.previousBlockHash); got.GetHash() != tt.want.GetHash() {
+			got := validator.CreateBlock(tt.args.previousBlockHash)
+			got.Witness.ValidatorsPublicKeys = tt.want.Witness.ValidatorsPublicKeys
+			got.Witness.ValidatorsSignatures = tt.want.Witness.ValidatorsSignatures
+			got.Header.TimeStamp = timeStamp
+			if got.GetHash() != tt.want.GetHash() {
 				t.Errorf("CreateBlock() = %v, want %v", got, tt.want)
 			}
 		})
