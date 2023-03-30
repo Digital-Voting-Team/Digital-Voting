@@ -81,6 +81,11 @@ func (tx *TxVoteAnonymous) IsEqual(otherTransaction *TxVoteAnonymous) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
+func (tx *TxVoteAnonymous) VerifySignature() bool {
+	ecdsaRs := ringSignature.NewECDSA_RS()
+	return ecdsaRs.VerifyBytes(tx.GetSignatureMessage(), tx.PublicKeys, tx.RingSignature, tx.KeyImage)
+}
+
 func (tx *TxVoteAnonymous) Validate(identityProvider *identity_provider.IdentityProvider) bool {
 	// TODO: add a way of getting voting by its link to check connected data
 	for _, pubKey := range tx.PublicKeys {
@@ -89,7 +94,9 @@ func (tx *TxVoteAnonymous) Validate(identityProvider *identity_provider.Identity
 		}
 	}
 
-	// TODO: think of passing this instead of creating
-	ecdsaRs := ringSignature.NewECDSA_RS()
-	return ecdsaRs.VerifyBytes(tx.GetSignatureMessage(), tx.PublicKeys, tx.RingSignature, tx.KeyImage)
+	return tx.VerifySignature()
+}
+
+func (tx *TxVoteAnonymous) GetTxBody() tx.TxBody {
+	return nil
 }

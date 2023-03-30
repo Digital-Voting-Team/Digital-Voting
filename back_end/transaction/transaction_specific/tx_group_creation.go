@@ -87,3 +87,7 @@ func (tx *TxGroupCreation) Validate(identityProvider *identity_provider.Identity
 	}
 	return true
 }
+
+func (tx *TxGroupCreation) ActualizeIdentities(identityProvider *identity_provider.IdentityProvider) {
+	identityProvider.AddPubKey(tx.GroupIdentifier, identity_provider.GroupIdentifier)
+}

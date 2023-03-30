@@ -28,7 +28,7 @@ func main() {
 	}
 
 	adminKeyPair, _ := keys.Random(sign.Curve)
-	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.VotingCreationAdmin)
+	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.RegistrationAdmin)
 
 	genesisTransaction := tx.NewTransaction(tx.AccountCreation, stx.NewTxAccCreation(account.RegistrationAdmin, adminKeyPair.PublicToBytes()))
 

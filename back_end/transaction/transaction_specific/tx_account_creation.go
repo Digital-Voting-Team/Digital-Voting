@@ -56,3 +56,8 @@ func (tx *TxAccountCreation) Validate(identityProvider *identity_provider.Identi
 		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.VotingCreationAdmin) &&
 		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.GroupIdentifier)
 }
+
+func (tx *TxAccountCreation) ActualizeIdentities(identityProvider *identity_provider.IdentityProvider) {
+	// TODO: think of linkage between enum in account and in identity provider
+	identityProvider.AddPubKey(tx.NewPublicKey, identity_provider.Identifier(tx.AccountType))
+}
