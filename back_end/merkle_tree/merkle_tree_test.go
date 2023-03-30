@@ -37,7 +37,6 @@ func TestMerkleTree_MerkleRoot(t *testing.T) {
 		name string
 		want []byte
 	}{
-		// TODO: Add test cases.
 		{
 			name: "Check on string",
 			want: []byte{95, 48, 204, 128, 19, 59, 147, 148, 21, 110, 36, 178, 51, 240, 196, 190, 50, 178, 78, 68, 187, 51, 129, 240, 44, 123, 165, 38, 25, 208, 254, 188},
@@ -68,7 +67,6 @@ func TestMerkleTree_VerifyContent(t *testing.T) {
 		want    bool
 		wantErr bool
 	}{
-		// TODO: Add test cases.
 		{
 			name:    "Check on string",
 			args:    args{StringContent{x: "Hey"}},
@@ -102,7 +100,6 @@ func TestMerkleTree_VerifyTree(t *testing.T) {
 		want    bool
 		wantErr bool
 	}{
-		// TODO: Add test cases.
 		{
 			name:    "Check_on_string",
 			want:    true,
@@ -139,7 +136,6 @@ func TestNewTree(t *testing.T) {
 		want    *MerkleTree
 		wantErr bool
 	}{
-		// TODO: Add test cases.
 		{
 			name:    "Check on string",
 			args:    args{[]Content{StringContent{x: "Hello"}, StringContent{x: "Hi"}, StringContent{x: "Hey"}, StringContent{x: "Hola"}}},
