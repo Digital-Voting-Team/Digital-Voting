@@ -64,7 +64,13 @@ func (tx *TxVoteAnonymous) GetConcatenation() string {
 	return fmt.Sprint(tx.TxType, tx.VotingLink, tx.Answer, tx.Data, tx.Nonce, tx.RingSignature, tx.KeyImage, tx.PublicKeys)
 }
 
-func (tx *TxVoteAnonymous) GetHash() string {
+func (tx *TxVoteAnonymous) GetHashString() string {
+	hash := tx.GetHash()
+
+	return base64.URLEncoding.EncodeToString(hash[:])
+}
+
+func (tx *TxVoteAnonymous) GetHash() [32]byte {
 	hasher := sha256.New()
 
 	bytes := []byte(tx.GetConcatenation())
@@ -74,7 +80,10 @@ func (tx *TxVoteAnonymous) GetHash() string {
 	hasher.Reset()
 	hasher.Write(bytes)
 
-	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+	hash := [32]byte{}
+	copy(hash[:], hasher.Sum(nil)[:32])
+
+	return hash
 }
 
 func (tx *TxVoteAnonymous) IsEqual(otherTransaction *TxVoteAnonymous) bool {

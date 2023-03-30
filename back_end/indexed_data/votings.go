@@ -13,7 +13,7 @@ func NewVotingProvider() *VotingProvider {
 }
 
 func (vp *VotingProvider) AddNewVoting(tx ts.TxVotingCreation) {
-	hash := tx.GetHashInBytes()
+	hash := tx.GetHash()
 	_, exists := vp.IndexedVotings[hash]
 	if !exists {
 		vp.IndexedVotings[hash] = tx

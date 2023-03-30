@@ -10,7 +10,8 @@ type TransactionContent struct {
 }
 
 func (t TransactionContent) CalculateHash() ([]byte, error) {
-	return []byte(t.tx.GetHash()), nil
+	hash := t.tx.GetHash()
+	return hash[:], nil
 }
 
 func (t TransactionContent) Equals(other Content) (bool, error) {

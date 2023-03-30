@@ -39,7 +39,7 @@ func TestVotingProvider_AddNewVoting(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			vp.AddNewVoting(tt.args.tx)
-			if _, got := vp.IndexedVotings[tx2.GetHashInBytes()]; got != tt.want {
+			if _, got := vp.IndexedVotings[tx2.GetHash()]; got != tt.want {
 				t.Errorf("got = %v, want %v", got, tt.want)
 			}
 		})
@@ -64,14 +64,14 @@ func TestVotingProvider_GetTx(t *testing.T) {
 		{
 			name: "Existing transaction",
 			args: args{
-				hash: tx1.GetHashInBytes(),
+				hash: tx1.GetHash(),
 			},
 			want: *tx1,
 		},
 		{
 			name: "Non existing transaction",
 			args: args{
-				hash: tx2.GetHashInBytes(),
+				hash: tx2.GetHash(),
 			},
 			want: ts.TxVotingCreation{},
 		},
@@ -104,14 +104,14 @@ func TestVotingProvider_RemoveVoting(t *testing.T) {
 		{
 			name: "Not deleted transaction",
 			args: args{
-				hash: tx2.GetHashInBytes(),
+				hash: tx2.GetHash(),
 			},
 			want: true,
 		},
 		{
 			name: "Deleted transaction",
 			args: args{
-				hash: tx1.GetHashInBytes(),
+				hash: tx1.GetHash(),
 			},
 			want: false,
 		},
@@ -119,7 +119,7 @@ func TestVotingProvider_RemoveVoting(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			vp.RemoveVoting(tt.args.hash)
-			if _, got := vp.IndexedVotings[tx1.GetHashInBytes()]; got != tt.want {
+			if _, got := vp.IndexedVotings[tx1.GetHash()]; got != tt.want {
 				t.Errorf("got = %v, want %v", got, tt.want)
 			}
 		})

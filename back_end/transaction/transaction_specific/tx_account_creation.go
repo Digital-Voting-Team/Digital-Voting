@@ -28,7 +28,13 @@ func (tx *TxAccountCreation) String() string {
 	return string(str)
 }
 
-func (tx *TxAccountCreation) GetHash() string {
+func (tx *TxAccountCreation) GetHashString() string {
+	hash := tx.GetHash()
+
+	return base64.URLEncoding.EncodeToString(hash[:])
+}
+
+func (tx *TxAccountCreation) GetHash() [32]byte {
 	hasher := sha256.New()
 
 	bytes := []byte(tx.GetSignatureMessage())
@@ -38,7 +44,10 @@ func (tx *TxAccountCreation) GetHash() string {
 	hasher.Reset()
 	hasher.Write(bytes)
 
-	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+	hash := [32]byte{}
+	copy(hash[:], hasher.Sum(nil)[:32])
+
+	return hash
 }
 
 func (tx *TxAccountCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
