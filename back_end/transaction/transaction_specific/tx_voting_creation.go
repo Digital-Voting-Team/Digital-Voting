@@ -42,6 +42,11 @@ func (tx *TxVotingCreation) String() string {
 }
 
 func (tx *TxVotingCreation) GetHash() string {
+	hash := tx.GetHashInBytes()
+	return base64.URLEncoding.EncodeToString(hash[:])
+}
+
+func (tx *TxVotingCreation) GetHashInBytes() [32]byte {
 	hasher := sha256.New()
 
 	bytes := []byte(tx.GetSignatureMessage())
@@ -51,7 +56,10 @@ func (tx *TxVotingCreation) GetHash() string {
 	hasher.Reset()
 	hasher.Write(bytes)
 
-	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+	hash := [32]byte{}
+	copy(hash[:], hasher.Sum(nil)[:32])
+
+	return hash
 }
 
 func (tx *TxVotingCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
