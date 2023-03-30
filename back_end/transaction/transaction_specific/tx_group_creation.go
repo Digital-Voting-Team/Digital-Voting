@@ -16,6 +16,7 @@ type TxGroupCreation struct {
 }
 
 func NewTxGroupCreation(groupName string, membersPublicKeys ...keys.PublicKeyBytes) *TxGroupCreation {
+	// TODO change parameter membersPublicKeys type from ... to slice
 	grpName := [256]byte{}
 	copy(grpName[:], groupName)
 
