@@ -70,7 +70,13 @@ func (tx *Transaction) GetConcatenation() string {
 	return fmt.Sprint(tx.TxType, tx.TxBody.GetSignatureMessage(), tx.Data, tx.Nonce, tx.Signature, tx.PublicKey)
 }
 
-func (tx *Transaction) GetHash() string {
+func (tx *Transaction) GetHashString() string {
+	hash := tx.GetHash()
+
+	return base64.URLEncoding.EncodeToString(hash[:])
+}
+
+func (tx *Transaction) GetHash() [32]byte {
 	hasher := sha256.New()
 
 	bytes := []byte(tx.GetConcatenation())
@@ -80,7 +86,10 @@ func (tx *Transaction) GetHash() string {
 	hasher.Reset()
 	hasher.Write(bytes)
 
-	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+	hash := [32]byte{}
+	copy(hash[:], hasher.Sum(nil)[:32])
+
+	return hash
 }
 
 func (tx *Transaction) IsEqual(otherTransaction *Transaction) bool {

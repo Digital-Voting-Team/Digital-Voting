@@ -41,12 +41,13 @@ func (tx *TxVotingCreation) String() string {
 	return string(str)
 }
 
-func (tx *TxVotingCreation) GetHash() string {
-	hash := tx.GetHashInBytes()
+func (tx *TxVotingCreation) GetHashString() string {
+	hash := tx.GetHash()
+
 	return base64.URLEncoding.EncodeToString(hash[:])
 }
 
-func (tx *TxVotingCreation) GetHashInBytes() [32]byte {
+func (tx *TxVotingCreation) GetHash() [32]byte {
 	hasher := sha256.New()
 
 	bytes := []byte(tx.GetSignatureMessage())

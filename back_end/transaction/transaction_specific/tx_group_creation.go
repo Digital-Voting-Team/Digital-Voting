@@ -55,7 +55,13 @@ func (tx *TxGroupCreation) String() string {
 	return string(str)
 }
 
-func (tx *TxGroupCreation) GetHash() string {
+func (tx *TxGroupCreation) GetHashString() string {
+	hash := tx.GetHash()
+
+	return base64.URLEncoding.EncodeToString(hash[:])
+}
+
+func (tx *TxGroupCreation) GetHash() [32]byte {
 	hasher := sha256.New()
 
 	bytes := []byte(tx.GetSignatureMessage())
@@ -65,7 +71,10 @@ func (tx *TxGroupCreation) GetHash() string {
 	hasher.Reset()
 	hasher.Write(bytes)
 
-	return base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+	hash := [32]byte{}
+	copy(hash[:], hasher.Sum(nil)[:32])
+
+	return hash
 }
 
 func (tx *TxGroupCreation) IsEqual(otherTransaction *TxGroupCreation) bool {
