@@ -15,8 +15,7 @@ type TxGroupCreation struct {
 	MembersPublicKeys []keys.PublicKeyBytes `json:"members_public_keys"`
 }
 
-func NewTxGroupCreation(groupName string, membersPublicKeys ...keys.PublicKeyBytes) *TxGroupCreation {
-	// TODO change parameter membersPublicKeys type from ... to slice
+func NewTxGroupCreation(groupName string, membersPublicKeys []keys.PublicKeyBytes) *TxGroupCreation {
 	grpName := [256]byte{}
 	copy(grpName[:], groupName)
 
