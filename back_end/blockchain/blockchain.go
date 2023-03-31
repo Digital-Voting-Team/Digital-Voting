@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// Blockchain TODO: create class Node with Blockchain and indexed databases
 type Blockchain struct {
 	Blocks []*block.Block
 }
