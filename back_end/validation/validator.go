@@ -64,6 +64,9 @@ func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
 	// Sign block
 	v.SignBlock(newBlock)
 
+	// TODO: think of way to restore transactions in case of rejecting block
+	v.MemPool = v.MemPool[numberInBlock:]
+
 	return newBlock
 }
 

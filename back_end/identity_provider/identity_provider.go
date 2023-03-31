@@ -2,6 +2,7 @@ package identity_provider
 
 import "digital-voting/signature/keys"
 
+// IdentityProvider TODO: change name to Account manager
 type IdentityProvider struct {
 	UserPubKeys               map[keys.PublicKeyBytes]struct{}
 	GroupIdentifiers          map[keys.PublicKeyBytes]struct{}

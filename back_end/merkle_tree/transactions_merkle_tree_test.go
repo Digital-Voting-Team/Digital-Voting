@@ -24,7 +24,7 @@ func TestVerifyContent(t *testing.T) {
 	groupName := "EPS-41"
 	membersPublicKeys := []keys.PublicKeyBytes{}
 	membersPublicKeys = append(membersPublicKeys, keyPair1.PublicToBytes())
-	txBody1 := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys...)
+	txBody1 := transaction_specific.NewTxGroupCreation(groupName, membersPublicKeys)
 	transaction1 := transaction.NewTransaction(transaction.GroupCreation, txBody1)
 	transactions = append(transactions, transaction1)
 

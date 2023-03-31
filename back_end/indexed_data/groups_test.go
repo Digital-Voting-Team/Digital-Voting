@@ -8,8 +8,8 @@ import (
 )
 
 func TestGroupProvider_AddNewGroup(t *testing.T) {
-	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}}...)
-	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}}...)
+	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}})
+	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}})
 
 	gp := NewGroupProvider()
 
@@ -47,8 +47,8 @@ func TestGroupProvider_AddNewGroup(t *testing.T) {
 }
 
 func TestGroupProvider_GetTx(t *testing.T) {
-	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}}...)
-	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}}...)
+	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}})
+	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}})
 
 	gp := NewGroupProvider()
 	gp.AddNewGroup(*tx1)
@@ -86,8 +86,8 @@ func TestGroupProvider_GetTx(t *testing.T) {
 }
 
 func TestGroupProvider_IsGroupMember(t *testing.T) {
-	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}}...)
-	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}}...)
+	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}})
+	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}})
 	gp := NewGroupProvider()
 	gp.AddNewGroup(*tx1)
 
@@ -135,8 +135,8 @@ func TestGroupProvider_IsGroupMember(t *testing.T) {
 }
 
 func TestGroupProvider_RemoveGroup(t *testing.T) {
-	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}}...)
-	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}}...)
+	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}})
+	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}})
 
 	gp := NewGroupProvider()
 	gp.AddNewGroup(*tx1)
