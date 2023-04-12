@@ -3,6 +3,7 @@ package transaction_specific
 import (
 	"crypto/sha256"
 	"digital-voting/account_manager"
+	"digital-voting/node"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -85,15 +86,17 @@ func (tx *TxGroupCreation) CheckPublicKeyByRole(accountManager *account_manager.
 	return accountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
-func (tx *TxGroupCreation) Validate(accountManager *account_manager.AccountManager) bool {
-	if accountManager.CheckPubKeyPresence(tx.GroupIdentifier, account_manager.GroupIdentifier) {
+func (tx *TxGroupCreation) CheckOnCreate(node *node.Node) bool {
+	if node.AccountManager.CheckPubKeyPresence(tx.GroupIdentifier, account_manager.GroupIdentifier) {
 		return false
 	}
+
 	for _, pubKey := range tx.MembersPublicKeys {
-		if !accountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
+		if !node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
 			return false
 		}
 	}
+
 	return true
 }
 

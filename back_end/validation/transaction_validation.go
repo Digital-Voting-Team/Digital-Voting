@@ -1,11 +1,11 @@
 package validation
 
 import (
-	"digital-voting/account_manager"
+	"digital-voting/node"
 	"digital-voting/transaction"
 )
 
-func ValidateTransaction(tx transaction.ITransaction, accountManager *account_manager.AccountManager) bool {
+func CheckOnCreateTransaction(tx transaction.ITransaction, node *node.Node) bool {
 	// TODO: think of how to actually get data from Identity Provider
-	return tx.Validate(accountManager)
+	return tx.CheckOnCreate(node)
 }

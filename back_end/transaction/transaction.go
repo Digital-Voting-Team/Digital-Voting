@@ -2,7 +2,7 @@ package transaction
 
 import (
 	"crypto/sha256"
-	"digital-voting/account_manager"
+	"digital-voting/node"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
 	"encoding/base64"
@@ -106,8 +106,8 @@ func (tx *Transaction) VerifySignature() bool {
 	)
 }
 
-func (tx *Transaction) Validate(accountManager *account_manager.AccountManager) bool {
-	if !tx.TxBody.Validate(accountManager) || !tx.TxBody.CheckPublicKeyByRole(accountManager, tx.PublicKey) {
+func (tx *Transaction) CheckOnCreate(node *node.Node) bool {
+	if !tx.TxBody.CheckOnCreate(node) || !tx.TxBody.CheckPublicKeyByRole(node.AccountManager, tx.PublicKey) {
 		return false
 	}
 

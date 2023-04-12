@@ -1,26 +1,24 @@
 package indexed_data
 
-import ts "digital-voting/transaction/transaction_specific"
-
 type VotingProvider struct {
-	IndexedVotings map[[32]byte]ts.TxVotingCreation
+	IndexedVotings map[[32]byte]VotingDTO
 }
 
 func NewVotingProvider() *VotingProvider {
 	return &VotingProvider{
-		IndexedVotings: map[[32]byte]ts.TxVotingCreation{},
+		IndexedVotings: map[[32]byte]VotingDTO{},
 	}
 }
 
-func (vp *VotingProvider) AddNewVoting(tx ts.TxVotingCreation) {
-	hash := tx.GetHash()
+func (vp *VotingProvider) AddNewVoting(voting VotingDTO) {
+	hash := voting.Hash
 	_, exists := vp.IndexedVotings[hash]
 	if !exists {
-		vp.IndexedVotings[hash] = tx
+		vp.IndexedVotings[hash] = voting
 	}
 }
 
-func (vp *VotingProvider) GetTx(hash [32]byte) ts.TxVotingCreation {
+func (vp *VotingProvider) GetVoting(hash [32]byte) VotingDTO {
 	return vp.IndexedVotings[hash]
 }
 

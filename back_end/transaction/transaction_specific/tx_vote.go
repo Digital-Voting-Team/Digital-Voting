@@ -3,6 +3,7 @@ package transaction_specific
 import (
 	"crypto/sha256"
 	"digital-voting/account_manager"
+	"digital-voting/node"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -57,7 +58,7 @@ func (tx *TxVote) CheckPublicKeyByRole(accountManager *account_manager.AccountMa
 	return accountManager.CheckPubKeyPresence(publicKey, account_manager.User)
 }
 
-func (tx *TxVote) Validate(accountManager *account_manager.AccountManager) bool {
+func (tx *TxVote) CheckOnCreate(node *node.Node) bool {
 	// TODO: add a way of getting voting by its link to check connected data
 	return true
 }

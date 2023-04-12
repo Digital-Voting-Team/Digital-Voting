@@ -3,6 +3,7 @@ package transaction_specific
 import (
 	"crypto/sha256"
 	"digital-voting/account_manager"
+	"digital-voting/node"
 	"digital-voting/signature/keys"
 	ringSignature "digital-voting/signature/signatures/ring_signature"
 	tx "digital-voting/transaction"
@@ -95,10 +96,10 @@ func (tx *TxVoteAnonymous) VerifySignature() bool {
 	return ecdsaRs.VerifyBytes(tx.GetSignatureMessage(), tx.PublicKeys, tx.RingSignature, tx.KeyImage)
 }
 
-func (tx *TxVoteAnonymous) Validate(accountManager *account_manager.AccountManager) bool {
+func (tx *TxVoteAnonymous) CheckOnCreate(node *node.Node) bool {
 	// TODO: add a way of getting voting by its link to check connected data
 	for _, pubKey := range tx.PublicKeys {
-		if !accountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
+		if !node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
 			return false
 		}
 	}

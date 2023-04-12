@@ -3,6 +3,7 @@ package transaction_specific
 import (
 	"crypto/sha256"
 	"digital-voting/account_manager"
+	"digital-voting/node"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -71,10 +72,11 @@ func (tx *TxVotingCreation) CheckPublicKeyByRole(accountManager *account_manager
 	return accountManager.CheckPubKeyPresence(publicKey, account_manager.VotingCreationAdmin)
 }
 
-func (tx *TxVotingCreation) Validate(accountManager *account_manager.AccountManager) bool {
+func (tx *TxVotingCreation) CheckOnCreate(node *node.Node) bool {
 	// TODO: think of date validation
 	for _, pubKey := range tx.Whitelist {
-		if !accountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
+		if !node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.User) &&
+			!node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.GroupIdentifier) {
 			return false
 		}
 	}

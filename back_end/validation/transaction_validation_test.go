@@ -3,6 +3,7 @@ package validation
 import (
 	"digital-voting/account"
 	"digital-voting/account_manager"
+	nd "digital-voting/node"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
@@ -17,12 +18,12 @@ import (
 func TestValidateTransaction(t *testing.T) {
 	sign := singleSignature.NewECDSA()
 	txSigner := signer.NewTransactionSigner()
-	accountManager := account_manager.NewAccountManager()
+	node := nd.NewNode()
 
 	keyPair1, _ := keys.Random(sign.Curve)
-	accountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.RegistrationAdmin)
-	accountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.VotingCreationAdmin)
-	accountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.User)
+	node.AccountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.RegistrationAdmin)
+	node.AccountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.VotingCreationAdmin)
+	node.AccountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.User)
 
 	keyPair2, _ := keys.Random(sign.Curve)
 	accCreationBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, keyPair2.PublicToBytes())
@@ -56,14 +57,14 @@ func TestValidateTransaction(t *testing.T) {
 			log.Panicln(err)
 		}
 		publicKeys = append(publicKeys, tempKeyPair.GetPublicKey())
-		accountManager.AddPubKey(tempKeyPair.PublicToBytes(), account_manager.User)
+		node.AccountManager.AddPubKey(tempKeyPair.PublicToBytes(), account_manager.User)
 	}
 	txVoteAnonymous := transaction_specific.NewTxVoteAnonymous([32]byte{}, 3)
 	txSigner.SignTransactionAnonymous(keyPair1, publicKeys, 0, txVoteAnonymous)
 
 	type args struct {
-		tx             transaction.ITransaction
-		accountManager *account_manager.AccountManager
+		tx   transaction.ITransaction
+		node *nd.Node
 	}
 	tests := []struct {
 		name string
@@ -73,56 +74,56 @@ func TestValidateTransaction(t *testing.T) {
 		{
 			name: "Valid Account creation transaction",
 			args: args{
-				tx:             txAccountCreation,
-				accountManager: accountManager,
+				tx:   txAccountCreation,
+				node: node,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Group creation transaction",
 			args: args{
-				tx:             txGroupCreation,
-				accountManager: accountManager,
+				tx:   txGroupCreation,
+				node: node,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Voting creation transaction",
 			args: args{
-				tx:             txVotingCreation,
-				accountManager: accountManager,
+				tx:   txVotingCreation,
+				node: node,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Vote transaction",
 			args: args{
-				tx:             txVote,
-				accountManager: accountManager,
+				tx:   txVote,
+				node: node,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Vote anonymous transaction",
 			args: args{
-				tx:             txVoteAnonymous,
-				accountManager: accountManager,
+				tx:   txVoteAnonymous,
+				node: node,
 			},
 			want: true,
 		},
 		{
 			name: "Invalid identity provider and/or administrator",
 			args: args{
-				tx:             txVoteAnonymous,
-				accountManager: account_manager.NewAccountManager(),
+				tx:   txVoteAnonymous,
+				node: nd.NewNode(),
 			},
 			want: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ValidateTransaction(tt.args.tx, tt.args.accountManager); got != tt.want {
-				t.Errorf("ValidateTransaction() = %v, want %v", got, tt.want)
+			if got := CheckOnCreateTransaction(tt.args.tx, tt.args.node); got != tt.want {
+				t.Errorf("CheckOnCreateTransaction() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"digital-voting/account"
 	"digital-voting/account_manager"
+	"digital-voting/node"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -58,12 +59,11 @@ func (tx *TxAccountCreation) CheckPublicKeyByRole(accountManager *account_manage
 	return accountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
-func (tx *TxAccountCreation) Validate(accountManager *account_manager.AccountManager) bool {
+func (tx *TxAccountCreation) CheckOnCreate(node *node.Node) bool {
 	// TODO: think of a better way to check
-	return !accountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.User) &&
-		!accountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.RegistrationAdmin) &&
-		!accountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.VotingCreationAdmin) &&
-		!accountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.GroupIdentifier)
+	return !node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.User) &&
+		!node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.RegistrationAdmin) &&
+		!node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.VotingCreationAdmin)
 }
 
 func (tx *TxAccountCreation) ActualizeIdentities(accountManager *account_manager.AccountManager) {

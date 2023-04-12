@@ -46,7 +46,7 @@ func main() {
 
 	validator.SignBlock(genesisBlock)
 	currentBlockchain := &blockchain.Blockchain{}
-	validator.AddBlockToChain(genesisBlock)
+	validator.AddBlockToChain(currentBlockchain, genesisBlock)
 
 	// Add first block with users
 	user1 := keys.FromPrivateKey(keys.PrivateKeyBytes{1}, sign.Curve)
@@ -66,7 +66,7 @@ func main() {
 	validator.AddToMemPool(txReg3)
 
 	block1 := validator.CreateBlock(genesisBlock.GetHash())
-	validator.AddBlockToChain(block1)
+	validator.AddBlockToChain(currentBlockchain, block1)
 	validator.ActualizeIdentityProvider(block1)
 
 	// Add second block with voting and group
@@ -90,7 +90,7 @@ func main() {
 	validator.AddToMemPool(txGroup)
 
 	block2 := validator.CreateBlock(block1.GetHash())
-	validator.AddBlockToChain(block2)
+	validator.AddBlockToChain(currentBlockchain, block2)
 	validator.ActualizeIdentityProvider(block2)
 
 	// Add third block with votings
@@ -109,7 +109,7 @@ func main() {
 	validator.AddToMemPool(txVote3)
 
 	block3 := validator.CreateBlock(block2.GetHash())
-	validator.AddBlockToChain(block3)
+	validator.AddBlockToChain(currentBlockchain, block3)
 	validator.ActualizeIdentityProvider(block3)
 
 	// Print blockchain

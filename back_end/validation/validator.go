@@ -3,6 +3,7 @@ package validation
 import (
 	"digital-voting/account_manager"
 	"digital-voting/block"
+	"digital-voting/blockchain"
 	"digital-voting/merkle_tree"
 	"digital-voting/node"
 	"digital-voting/signature/keys"
@@ -33,7 +34,7 @@ func (v *Validator) isInMemPool(transaction tx.ITransaction) bool {
 }
 
 func (v *Validator) AddToMemPool(newTransaction tx.ITransaction) {
-	if !v.isInMemPool(newTransaction) && newTransaction.Validate(v.Node.AccountManager) {
+	if !v.isInMemPool(newTransaction) && newTransaction.CheckOnCreate(v.Node) {
 		v.MemPool = append(v.MemPool, newTransaction)
 	}
 }
@@ -74,8 +75,8 @@ func (v *Validator) SignBlock(block *block.Block) {
 	v.BlockSigner.SignBlock(v.KeyPair, block)
 }
 
-func (v *Validator) AddBlockToChain(block *block.Block) {
-	v.Node.Blockchain.AddBlock(block)
+func (v *Validator) AddBlockToChain(blockchain *blockchain.Blockchain, block *block.Block) {
+	blockchain.AddBlock(block)
 }
 
 type IdentityActualizer interface {
