@@ -10,7 +10,7 @@ type AccountManager struct {
 	ValidatorPubKeys          map[keys.PublicKeyBytes]struct{}
 }
 
-func NewIdentityProvider() *AccountManager {
+func NewAccountManager() *AccountManager {
 	return &AccountManager{
 		UserPubKeys:               map[keys.PublicKeyBytes]struct{}{},
 		GroupIdentifiers:          map[keys.PublicKeyBytes]struct{}{},

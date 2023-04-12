@@ -67,14 +67,14 @@ func (tx *TxVotingCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxVotingCreation) CheckPublicKeyByRole(identityProvider *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, account_manager.VotingCreationAdmin)
+func (tx *TxVotingCreation) CheckPublicKeyByRole(accountManager *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
+	return accountManager.CheckPubKeyPresence(publicKey, account_manager.VotingCreationAdmin)
 }
 
-func (tx *TxVotingCreation) Validate(identityProvider *account_manager.AccountManager) bool {
+func (tx *TxVotingCreation) Validate(accountManager *account_manager.AccountManager) bool {
 	// TODO: think of date validation
 	for _, pubKey := range tx.Whitelist {
-		if !identityProvider.CheckPubKeyPresence(pubKey, account_manager.User) {
+		if !accountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
 			return false
 		}
 	}

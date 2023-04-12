@@ -81,22 +81,22 @@ func (tx *TxGroupCreation) IsEqual(otherTransaction *TxGroupCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxGroupCreation) CheckPublicKeyByRole(identityProvider *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
+func (tx *TxGroupCreation) CheckPublicKeyByRole(accountManager *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
+	return accountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
-func (tx *TxGroupCreation) Validate(identityProvider *account_manager.AccountManager) bool {
-	if identityProvider.CheckPubKeyPresence(tx.GroupIdentifier, account_manager.GroupIdentifier) {
+func (tx *TxGroupCreation) Validate(accountManager *account_manager.AccountManager) bool {
+	if accountManager.CheckPubKeyPresence(tx.GroupIdentifier, account_manager.GroupIdentifier) {
 		return false
 	}
 	for _, pubKey := range tx.MembersPublicKeys {
-		if !identityProvider.CheckPubKeyPresence(pubKey, account_manager.User) {
+		if !accountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
 			return false
 		}
 	}
 	return true
 }
 
-func (tx *TxGroupCreation) ActualizeIdentities(identityProvider *account_manager.AccountManager) {
-	identityProvider.AddPubKey(tx.GroupIdentifier, account_manager.GroupIdentifier)
+func (tx *TxGroupCreation) ActualizeIdentities(accountManager *account_manager.AccountManager) {
+	accountManager.AddPubKey(tx.GroupIdentifier, account_manager.GroupIdentifier)
 }

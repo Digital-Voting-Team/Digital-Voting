@@ -95,10 +95,10 @@ func (tx *TxVoteAnonymous) VerifySignature() bool {
 	return ecdsaRs.VerifyBytes(tx.GetSignatureMessage(), tx.PublicKeys, tx.RingSignature, tx.KeyImage)
 }
 
-func (tx *TxVoteAnonymous) Validate(identityProvider *account_manager.AccountManager) bool {
+func (tx *TxVoteAnonymous) Validate(accountManager *account_manager.AccountManager) bool {
 	// TODO: add a way of getting voting by its link to check connected data
 	for _, pubKey := range tx.PublicKeys {
-		if !identityProvider.CheckPubKeyPresence(pubKey, account_manager.User) {
+		if !accountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
 			return false
 		}
 	}

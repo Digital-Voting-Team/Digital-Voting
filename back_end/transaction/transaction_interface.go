@@ -7,7 +7,7 @@ type ITransaction interface {
 	GetHash() [32]byte
 	Print()
 	GetTxType() TxType
-	Validate(identityProvider *account_manager.AccountManager) bool
+	Validate(accountManager *account_manager.AccountManager) bool
 	VerifySignature() bool
 	GetTxBody() TxBody
 }

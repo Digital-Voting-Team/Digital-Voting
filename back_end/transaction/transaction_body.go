@@ -7,6 +7,6 @@ import (
 
 type TxBody interface {
 	GetSignatureMessage() string
-	Validate(identityProvider *account_manager.AccountManager) bool
-	CheckPublicKeyByRole(identityProvider *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool
+	Validate(accountManager *account_manager.AccountManager) bool
+	CheckPublicKeyByRole(accountManager *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool
 }

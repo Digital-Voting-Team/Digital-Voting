@@ -17,12 +17,12 @@ import (
 func TestValidateTransaction(t *testing.T) {
 	sign := singleSignature.NewECDSA()
 	txSigner := signer.NewTransactionSigner()
-	identityProvider := account_manager.NewIdentityProvider()
+	accountManager := account_manager.NewAccountManager()
 
 	keyPair1, _ := keys.Random(sign.Curve)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), account_manager.RegistrationAdmin)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), account_manager.VotingCreationAdmin)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), account_manager.User)
+	accountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.RegistrationAdmin)
+	accountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.VotingCreationAdmin)
+	accountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.User)
 
 	keyPair2, _ := keys.Random(sign.Curve)
 	accCreationBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, keyPair2.PublicToBytes())
@@ -56,14 +56,14 @@ func TestValidateTransaction(t *testing.T) {
 			log.Panicln(err)
 		}
 		publicKeys = append(publicKeys, tempKeyPair.GetPublicKey())
-		identityProvider.AddPubKey(tempKeyPair.PublicToBytes(), account_manager.User)
+		accountManager.AddPubKey(tempKeyPair.PublicToBytes(), account_manager.User)
 	}
 	txVoteAnonymous := transaction_specific.NewTxVoteAnonymous([32]byte{}, 3)
 	txSigner.SignTransactionAnonymous(keyPair1, publicKeys, 0, txVoteAnonymous)
 
 	type args struct {
-		tx               transaction.ITransaction
-		identityProvider *account_manager.AccountManager
+		tx             transaction.ITransaction
+		accountManager *account_manager.AccountManager
 	}
 	tests := []struct {
 		name string
@@ -73,55 +73,55 @@ func TestValidateTransaction(t *testing.T) {
 		{
 			name: "Valid Account creation transaction",
 			args: args{
-				tx:               txAccountCreation,
-				identityProvider: identityProvider,
+				tx:             txAccountCreation,
+				accountManager: accountManager,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Group creation transaction",
 			args: args{
-				tx:               txGroupCreation,
-				identityProvider: identityProvider,
+				tx:             txGroupCreation,
+				accountManager: accountManager,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Voting creation transaction",
 			args: args{
-				tx:               txVotingCreation,
-				identityProvider: identityProvider,
+				tx:             txVotingCreation,
+				accountManager: accountManager,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Vote transaction",
 			args: args{
-				tx:               txVote,
-				identityProvider: identityProvider,
+				tx:             txVote,
+				accountManager: accountManager,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Vote anonymous transaction",
 			args: args{
-				tx:               txVoteAnonymous,
-				identityProvider: identityProvider,
+				tx:             txVoteAnonymous,
+				accountManager: accountManager,
 			},
 			want: true,
 		},
 		{
 			name: "Invalid identity provider and/or administrator",
 			args: args{
-				tx:               txVoteAnonymous,
-				identityProvider: account_manager.NewIdentityProvider(),
+				tx:             txVoteAnonymous,
+				accountManager: account_manager.NewAccountManager(),
 			},
 			want: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ValidateTransaction(tt.args.tx, tt.args.identityProvider); got != tt.want {
+			if got := ValidateTransaction(tt.args.tx, tt.args.accountManager); got != tt.want {
 				t.Errorf("ValidateTransaction() = %v, want %v", got, tt.want)
 			}
 		})

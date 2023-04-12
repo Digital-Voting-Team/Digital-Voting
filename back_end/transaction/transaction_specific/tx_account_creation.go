@@ -54,19 +54,19 @@ func (tx *TxAccountCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxAccountCreation) CheckPublicKeyByRole(identityProvider *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
+func (tx *TxAccountCreation) CheckPublicKeyByRole(accountManager *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
+	return accountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
-func (tx *TxAccountCreation) Validate(identityProvider *account_manager.AccountManager) bool {
+func (tx *TxAccountCreation) Validate(accountManager *account_manager.AccountManager) bool {
 	// TODO: think of a better way to check
-	return !identityProvider.CheckPubKeyPresence(tx.NewPublicKey, account_manager.User) &&
-		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, account_manager.RegistrationAdmin) &&
-		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, account_manager.VotingCreationAdmin) &&
-		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, account_manager.GroupIdentifier)
+	return !accountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.User) &&
+		!accountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.RegistrationAdmin) &&
+		!accountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.VotingCreationAdmin) &&
+		!accountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.GroupIdentifier)
 }
 
-func (tx *TxAccountCreation) ActualizeIdentities(identityProvider *account_manager.AccountManager) {
+func (tx *TxAccountCreation) ActualizeIdentities(accountManager *account_manager.AccountManager) {
 	// TODO: think of linkage between enum in account and in identity provider
-	identityProvider.AddPubKey(tx.NewPublicKey, account_manager.Identifier(tx.AccountType))
+	accountManager.AddPubKey(tx.NewPublicKey, account_manager.Identifier(tx.AccountType))
 }

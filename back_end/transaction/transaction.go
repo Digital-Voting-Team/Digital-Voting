@@ -106,8 +106,8 @@ func (tx *Transaction) VerifySignature() bool {
 	)
 }
 
-func (tx *Transaction) Validate(identityProvider *account_manager.AccountManager) bool {
-	if !tx.TxBody.Validate(identityProvider) || !tx.TxBody.CheckPublicKeyByRole(identityProvider, tx.PublicKey) {
+func (tx *Transaction) Validate(accountManager *account_manager.AccountManager) bool {
+	if !tx.TxBody.Validate(accountManager) || !tx.TxBody.CheckPublicKeyByRole(accountManager, tx.PublicKey) {
 		return false
 	}
 

@@ -5,6 +5,7 @@ import (
 	ip "digital-voting/account_manager"
 	"digital-voting/block"
 	"digital-voting/blockchain"
+	nd "digital-voting/node"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
@@ -19,20 +20,20 @@ import (
 func main() {
 	// Add genesis block
 	sign := singleSignature.NewECDSA()
-	identityProvider := ip.NewIdentityProvider()
+	node := nd.NewNode()
 
 	validatorKeyPair, _ := keys.Random(sign.Curve)
-	identityProvider.AddPubKey(validatorKeyPair.PublicToBytes(), ip.Validator)
+	node.AccountManager.AddPubKey(validatorKeyPair.PublicToBytes(), ip.Validator)
 
 	validator := &validation.Validator{
-		KeyPair:          validatorKeyPair,
-		IdentityProvider: identityProvider,
-		BlockSigner:      signer.NewBlockSigner(),
+		KeyPair:     validatorKeyPair,
+		Node:        node,
+		BlockSigner: signer.NewBlockSigner(),
 	}
 
 	adminKeyPair, _ := keys.Random(sign.Curve)
-	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.RegistrationAdmin)
-	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.VotingCreationAdmin)
+	node.AccountManager.AddPubKey(adminKeyPair.PublicToBytes(), ip.RegistrationAdmin)
+	node.AccountManager.AddPubKey(adminKeyPair.PublicToBytes(), ip.VotingCreationAdmin)
 
 	genesisTransaction1 := tx.NewTransaction(tx.AccountCreation, stx.NewTxAccCreation(account.RegistrationAdmin, adminKeyPair.PublicToBytes()))
 	genesisTransaction2 := tx.NewTransaction(tx.AccountCreation, stx.NewTxAccCreation(account.VotingCreationAdmin, adminKeyPair.PublicToBytes()))
@@ -45,7 +46,7 @@ func main() {
 
 	validator.SignBlock(genesisBlock)
 	currentBlockchain := &blockchain.Blockchain{}
-	validator.AddBlockToChain(currentBlockchain, genesisBlock)
+	validator.AddBlockToChain(genesisBlock)
 
 	// Add first block with users
 	user1 := keys.FromPrivateKey(keys.PrivateKeyBytes{1}, sign.Curve)
@@ -65,13 +66,13 @@ func main() {
 	validator.AddToMemPool(txReg3)
 
 	block1 := validator.CreateBlock(genesisBlock.GetHash())
-	validator.AddBlockToChain(currentBlockchain, block1)
+	validator.AddBlockToChain(block1)
 	validator.ActualizeIdentityProvider(block1)
 
 	// Add second block with voting and group
-	whitelist := make([][33]byte, 0, len(identityProvider.UserPubKeys))
-	members := make([]keys.PublicKeyBytes, 0, len(identityProvider.UserPubKeys))
-	for k := range identityProvider.UserPubKeys {
+	whitelist := make([][33]byte, 0, len(node.AccountManager.UserPubKeys))
+	members := make([]keys.PublicKeyBytes, 0, len(node.AccountManager.UserPubKeys))
+	for k := range node.AccountManager.UserPubKeys {
 		whitelist = append(whitelist, k)
 		members = append(members, k)
 	}
@@ -89,7 +90,7 @@ func main() {
 	validator.AddToMemPool(txGroup)
 
 	block2 := validator.CreateBlock(block1.GetHash())
-	validator.AddBlockToChain(currentBlockchain, block2)
+	validator.AddBlockToChain(block2)
 	validator.ActualizeIdentityProvider(block2)
 
 	// Add third block with votings
@@ -108,7 +109,7 @@ func main() {
 	validator.AddToMemPool(txVote3)
 
 	block3 := validator.CreateBlock(block2.GetHash())
-	validator.AddBlockToChain(currentBlockchain, block3)
+	validator.AddBlockToChain(block3)
 	validator.ActualizeIdentityProvider(block3)
 
 	// Print blockchain

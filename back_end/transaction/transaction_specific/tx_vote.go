@@ -53,11 +53,11 @@ func (tx *TxVote) IsEqual(otherTransaction *TxVote) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxVote) CheckPublicKeyByRole(identityProvider *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, account_manager.User)
+func (tx *TxVote) CheckPublicKeyByRole(accountManager *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
+	return accountManager.CheckPubKeyPresence(publicKey, account_manager.User)
 }
 
-func (tx *TxVote) Validate(identityProvider *account_manager.AccountManager) bool {
+func (tx *TxVote) Validate(accountManager *account_manager.AccountManager) bool {
 	// TODO: add a way of getting voting by its link to check connected data
 	return true
 }
