@@ -1,9 +1,9 @@
 package validation
 
 import (
+	"digital-voting/account_manager"
 	"digital-voting/block"
 	"digital-voting/blockchain"
-	"digital-voting/identity_provider"
 	"digital-voting/merkle_tree"
 	"digital-voting/signature/keys"
 	"digital-voting/signer"
@@ -18,7 +18,7 @@ type Validator struct {
 	// TODO: think of data structure to store in future
 	ValidatorsAddresses []any
 	MemPool             []tx.ITransaction
-	IdentityProvider    *identity_provider.IdentityProvider
+	IdentityProvider    *account_manager.AccountManager
 	BlockSigner         *signer.BlockSigner
 }
 
@@ -79,7 +79,7 @@ func (v *Validator) AddBlockToChain(blockChain *blockchain.Blockchain, block *bl
 }
 
 type IdentityActualizer interface {
-	ActualizeIdentities(identityProvider *identity_provider.IdentityProvider)
+	ActualizeIdentities(identityProvider *account_manager.AccountManager)
 }
 
 func (v *Validator) ActualizeIdentityProvider(block *block.Block) {

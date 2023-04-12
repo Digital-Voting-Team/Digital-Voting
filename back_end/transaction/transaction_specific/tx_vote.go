@@ -2,7 +2,7 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
-	"digital-voting/identity_provider"
+	"digital-voting/account_manager"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -53,11 +53,11 @@ func (tx *TxVote) IsEqual(otherTransaction *TxVote) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxVote) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.User)
+func (tx *TxVote) CheckPublicKeyByRole(identityProvider *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
+	return identityProvider.CheckPubKeyPresence(publicKey, account_manager.User)
 }
 
-func (tx *TxVote) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+func (tx *TxVote) Validate(identityProvider *account_manager.AccountManager) bool {
 	// TODO: add a way of getting voting by its link to check connected data
 	return true
 }

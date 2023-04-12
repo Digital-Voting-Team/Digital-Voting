@@ -1,12 +1,12 @@
 package transaction
 
 import (
-	"digital-voting/identity_provider"
+	"digital-voting/account_manager"
 	"digital-voting/signature/keys"
 )
 
 type TxBody interface {
 	GetSignatureMessage() string
-	Validate(identityProvider *identity_provider.IdentityProvider) bool
-	CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool
+	Validate(identityProvider *account_manager.AccountManager) bool
+	CheckPublicKeyByRole(identityProvider *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool
 }

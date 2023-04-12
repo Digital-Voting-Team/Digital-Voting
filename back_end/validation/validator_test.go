@@ -2,8 +2,8 @@ package validation
 
 import (
 	"digital-voting/account"
+	ip "digital-voting/account_manager"
 	blk "digital-voting/block"
-	ip "digital-voting/identity_provider"
 	"digital-voting/merkle_tree"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"

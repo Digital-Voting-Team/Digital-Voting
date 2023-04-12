@@ -2,7 +2,7 @@ package validation
 
 import (
 	"digital-voting/account"
-	"digital-voting/identity_provider"
+	"digital-voting/account_manager"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
@@ -17,12 +17,12 @@ import (
 func TestValidateTransaction(t *testing.T) {
 	sign := singleSignature.NewECDSA()
 	txSigner := signer.NewTransactionSigner()
-	identityProvider := identity_provider.NewIdentityProvider()
+	identityProvider := account_manager.NewIdentityProvider()
 
 	keyPair1, _ := keys.Random(sign.Curve)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.RegistrationAdmin)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.VotingCreationAdmin)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.User)
+	identityProvider.AddPubKey(keyPair1.PublicToBytes(), account_manager.RegistrationAdmin)
+	identityProvider.AddPubKey(keyPair1.PublicToBytes(), account_manager.VotingCreationAdmin)
+	identityProvider.AddPubKey(keyPair1.PublicToBytes(), account_manager.User)
 
 	keyPair2, _ := keys.Random(sign.Curve)
 	accCreationBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, keyPair2.PublicToBytes())
@@ -56,14 +56,14 @@ func TestValidateTransaction(t *testing.T) {
 			log.Panicln(err)
 		}
 		publicKeys = append(publicKeys, tempKeyPair.GetPublicKey())
-		identityProvider.AddPubKey(tempKeyPair.PublicToBytes(), identity_provider.User)
+		identityProvider.AddPubKey(tempKeyPair.PublicToBytes(), account_manager.User)
 	}
 	txVoteAnonymous := transaction_specific.NewTxVoteAnonymous([32]byte{}, 3)
 	txSigner.SignTransactionAnonymous(keyPair1, publicKeys, 0, txVoteAnonymous)
 
 	type args struct {
 		tx               transaction.ITransaction
-		identityProvider *identity_provider.IdentityProvider
+		identityProvider *account_manager.AccountManager
 	}
 	tests := []struct {
 		name string
@@ -114,7 +114,7 @@ func TestValidateTransaction(t *testing.T) {
 			name: "Invalid identity provider and/or administrator",
 			args: args{
 				tx:               txVoteAnonymous,
-				identityProvider: identity_provider.NewIdentityProvider(),
+				identityProvider: account_manager.NewIdentityProvider(),
 			},
 			want: false,
 		},

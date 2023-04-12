@@ -2,7 +2,7 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
-	"digital-voting/identity_provider"
+	"digital-voting/account_manager"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -81,22 +81,22 @@ func (tx *TxGroupCreation) IsEqual(otherTransaction *TxGroupCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxGroupCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.RegistrationAdmin)
+func (tx *TxGroupCreation) CheckPublicKeyByRole(identityProvider *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
+	return identityProvider.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
-func (tx *TxGroupCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
-	if identityProvider.CheckPubKeyPresence(tx.GroupIdentifier, identity_provider.GroupIdentifier) {
+func (tx *TxGroupCreation) Validate(identityProvider *account_manager.AccountManager) bool {
+	if identityProvider.CheckPubKeyPresence(tx.GroupIdentifier, account_manager.GroupIdentifier) {
 		return false
 	}
 	for _, pubKey := range tx.MembersPublicKeys {
-		if !identityProvider.CheckPubKeyPresence(pubKey, identity_provider.User) {
+		if !identityProvider.CheckPubKeyPresence(pubKey, account_manager.User) {
 			return false
 		}
 	}
 	return true
 }
 
-func (tx *TxGroupCreation) ActualizeIdentities(identityProvider *identity_provider.IdentityProvider) {
-	identityProvider.AddPubKey(tx.GroupIdentifier, identity_provider.GroupIdentifier)
+func (tx *TxGroupCreation) ActualizeIdentities(identityProvider *account_manager.AccountManager) {
+	identityProvider.AddPubKey(tx.GroupIdentifier, account_manager.GroupIdentifier)
 }

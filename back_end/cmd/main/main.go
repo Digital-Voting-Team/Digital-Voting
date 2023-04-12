@@ -2,9 +2,9 @@ package main
 
 import (
 	"digital-voting/account"
+	ip "digital-voting/account_manager"
 	"digital-voting/block"
 	"digital-voting/blockchain"
-	ip "digital-voting/identity_provider"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"

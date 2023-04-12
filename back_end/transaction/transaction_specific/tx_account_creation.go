@@ -3,7 +3,7 @@ package transaction_specific
 import (
 	"crypto/sha256"
 	"digital-voting/account"
-	"digital-voting/identity_provider"
+	"digital-voting/account_manager"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -54,19 +54,19 @@ func (tx *TxAccountCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxAccountCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.RegistrationAdmin)
+func (tx *TxAccountCreation) CheckPublicKeyByRole(identityProvider *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
+	return identityProvider.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
-func (tx *TxAccountCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+func (tx *TxAccountCreation) Validate(identityProvider *account_manager.AccountManager) bool {
 	// TODO: think of a better way to check
-	return !identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.User) &&
-		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.RegistrationAdmin) &&
-		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.VotingCreationAdmin) &&
-		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.GroupIdentifier)
+	return !identityProvider.CheckPubKeyPresence(tx.NewPublicKey, account_manager.User) &&
+		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, account_manager.RegistrationAdmin) &&
+		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, account_manager.VotingCreationAdmin) &&
+		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, account_manager.GroupIdentifier)
 }
 
-func (tx *TxAccountCreation) ActualizeIdentities(identityProvider *identity_provider.IdentityProvider) {
+func (tx *TxAccountCreation) ActualizeIdentities(identityProvider *account_manager.AccountManager) {
 	// TODO: think of linkage between enum in account and in identity provider
-	identityProvider.AddPubKey(tx.NewPublicKey, identity_provider.Identifier(tx.AccountType))
+	identityProvider.AddPubKey(tx.NewPublicKey, account_manager.Identifier(tx.AccountType))
 }

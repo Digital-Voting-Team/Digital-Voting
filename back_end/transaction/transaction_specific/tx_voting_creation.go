@@ -2,7 +2,7 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
-	"digital-voting/identity_provider"
+	"digital-voting/account_manager"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -67,14 +67,14 @@ func (tx *TxVotingCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxVotingCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.VotingCreationAdmin)
+func (tx *TxVotingCreation) CheckPublicKeyByRole(identityProvider *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
+	return identityProvider.CheckPubKeyPresence(publicKey, account_manager.VotingCreationAdmin)
 }
 
-func (tx *TxVotingCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+func (tx *TxVotingCreation) Validate(identityProvider *account_manager.AccountManager) bool {
 	// TODO: think of date validation
 	for _, pubKey := range tx.Whitelist {
-		if !identityProvider.CheckPubKeyPresence(pubKey, identity_provider.User) {
+		if !identityProvider.CheckPubKeyPresence(pubKey, account_manager.User) {
 			return false
 		}
 	}
