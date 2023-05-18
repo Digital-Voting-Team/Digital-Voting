@@ -2,27 +2,26 @@ package validation
 
 import (
 	"digital-voting/block"
-	"digital-voting/blockchain"
 	"digital-voting/identity_provider"
 	"digital-voting/merkle_tree"
 	"digital-voting/signature/keys"
 	"digital-voting/signer"
-	tx "digital-voting/transaction"
+	"digital-voting/transaction"
 	"math"
 	"time"
 )
 
 type Validator struct {
 	KeyPair              *keys.KeyPair
-	ValidatorsPublicKeys map[keys.PublicKeyBytes]struct{}
+	ValidatorsPublicKeys map[[33]byte]struct{}
 	// TODO: think of data structure to store in future
 	ValidatorsAddresses []any
-	MemPool             []tx.ITransaction
+	MemPool             []transaction.ITransaction
 	IdentityProvider    *identity_provider.IdentityProvider
 	BlockSigner         *signer.BlockSigner
 }
 
-func (v *Validator) isInMemPool(transaction tx.ITransaction) bool {
+func (v *Validator) isInMemPool(transaction transaction.ITransaction) bool {
 	for _, v := range v.MemPool {
 		if v == transaction {
 			return true
@@ -32,7 +31,7 @@ func (v *Validator) isInMemPool(transaction tx.ITransaction) bool {
 	return false
 }
 
-func (v *Validator) AddToMemPool(newTransaction tx.ITransaction) {
+func (v *Validator) AddToMemPool(newTransaction transaction.ITransaction) {
 	if !v.isInMemPool(newTransaction) && newTransaction.Validate(v.IdentityProvider) {
 		v.MemPool = append(v.MemPool, newTransaction)
 	}
@@ -55,17 +54,12 @@ func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
 		MerkleRoot: merkle_tree.GetMerkleRoot(blockBody.Transactions),
 	}
 
-	// Create block itself
+	// Sign block
 	newBlock := &block.Block{
 		Header: blockHeader,
 		Body:   blockBody,
 	}
-
-	// Sign block
 	v.SignBlock(newBlock)
-
-	// TODO: think of way to restore transactions in case of rejecting block
-	v.MemPool = v.MemPool[numberInBlock:]
 
 	return newBlock
 }
@@ -74,19 +68,11 @@ func (v *Validator) SignBlock(block *block.Block) {
 	v.BlockSigner.SignBlock(v.KeyPair, block)
 }
 
-func (v *Validator) AddBlockToChain(blockChain *blockchain.Blockchain, block *block.Block) {
+type BlockChain interface {
+	AddBlock(block *block.Block)
+}
+
+// AddBlockToChain TODO: add actual blockchain parameter after blockchain implementation
+func (v *Validator) AddBlockToChain(blockChain BlockChain, block *block.Block) {
 	blockChain.AddBlock(block)
-}
-
-type IdentityActualizer interface {
-	ActualizeIdentities(identityProvider *identity_provider.IdentityProvider)
-}
-
-func (v *Validator) ActualizeIdentityProvider(block *block.Block) {
-	for _, transaction := range block.Body.Transactions {
-		txExact, ok := transaction.GetTxBody().(IdentityActualizer)
-		if ok {
-			txExact.ActualizeIdentities(v.IdentityProvider)
-		}
-	}
 }
