@@ -87,7 +87,7 @@ func (tx *TxGroupCreation) CheckPublicKeyByRole(accountManager *account_manager.
 }
 
 func (tx *TxGroupCreation) CheckOnCreate(node *node.Node) bool {
-	// Maybe check in indexed groups?
+	// TODO: Maybe check in indexed groups?
 	if node.AccountManager.CheckPubKeyPresence(tx.GroupIdentifier, account_manager.GroupIdentifier) {
 		return false
 	}

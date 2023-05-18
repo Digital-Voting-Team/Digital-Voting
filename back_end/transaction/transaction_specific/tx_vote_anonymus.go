@@ -97,7 +97,17 @@ func (tx *TxVoteAnonymous) VerifySignature() bool {
 }
 
 func (tx *TxVoteAnonymous) CheckOnCreate(node *node.Node) bool {
-	// TODO: add a way of getting voting by its link to check connected data
+	// TODO: think of date validation
+
+	indexedVoting := node.VotingProvider.GetVoting(tx.VotingLink)
+	if indexedVoting.Hash == [32]byte{} {
+		return false
+	}
+
+	if tx.Answer < 0 || tx.Answer >= uint8(len(indexedVoting.Answers)) {
+		return false
+	}
+
 	for _, pubKey := range tx.PublicKeys {
 		if !node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
 			return false
