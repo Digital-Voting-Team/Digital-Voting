@@ -68,5 +68,5 @@ func (tx *TxAccountCreation) Validate(identityProvider *identity_provider.Identi
 
 func (tx *TxAccountCreation) ActualizeIdentities(identityProvider *identity_provider.IdentityProvider) {
 	// TODO: think of linkage between enum in account and in identity provider
-	identityProvider.AddPubKey(tx.NewPublicKey, identity_provider.Identifier(tx.AccountType))
+	identityProvider.AddPubKey(tx.NewPublicKey, identity_provider.PubKeyType(tx.AccountType))
 }

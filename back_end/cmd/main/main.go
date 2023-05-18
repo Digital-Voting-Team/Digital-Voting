@@ -38,7 +38,10 @@ func main() {
 
 	validator.SignBlock(genesisBlock)
 	currentBlockchain := &blockchain.Blockchain{}
-	validator.AddBlockToChain(currentBlockchain, genesisBlock)
+	err := validator.AddBlockToChain(currentBlockchain, genesisBlock)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 
 	for _, b := range currentBlockchain.Blocks {
 		fmt.Printf("%v\n", b)

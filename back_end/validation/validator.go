@@ -69,10 +69,10 @@ func (v *Validator) SignBlock(block *block.Block) {
 }
 
 type BlockChain interface {
-	AddBlock(block *block.Block)
+	AddBlock(block *block.Block) error
 }
 
 // AddBlockToChain TODO: add actual blockchain parameter after blockchain implementation
-func (v *Validator) AddBlockToChain(blockChain BlockChain, block *block.Block) {
-	blockChain.AddBlock(block)
+func (v *Validator) AddBlockToChain(blockChain BlockChain, block *block.Block) error {
+	return blockChain.AddBlock(block)
 }
