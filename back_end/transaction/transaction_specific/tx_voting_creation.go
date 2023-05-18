@@ -2,8 +2,8 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
-	"digital-voting/account_manager"
 	"digital-voting/node"
+	"digital-voting/node/account_manager"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"

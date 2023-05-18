@@ -2,10 +2,10 @@ package validation
 
 import (
 	"digital-voting/account"
-	ip "digital-voting/account_manager"
 	blk "digital-voting/block"
 	"digital-voting/merkle_tree"
 	nd "digital-voting/node"
+	ip "digital-voting/node/account_manager"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
 	"digital-voting/signer"

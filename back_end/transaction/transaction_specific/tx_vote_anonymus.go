@@ -2,8 +2,8 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
-	"digital-voting/account_manager"
 	"digital-voting/node"
+	"digital-voting/node/account_manager"
 	"digital-voting/signature/keys"
 	ringSignature "digital-voting/signature/signatures/ring_signature"
 	tx "digital-voting/transaction"

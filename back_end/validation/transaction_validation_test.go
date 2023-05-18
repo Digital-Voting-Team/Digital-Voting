@@ -2,8 +2,8 @@ package validation
 
 import (
 	"digital-voting/account"
-	"digital-voting/account_manager"
 	nd "digital-voting/node"
+	"digital-voting/node/account_manager"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"

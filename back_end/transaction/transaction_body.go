@@ -1,8 +1,8 @@
 package transaction
 
 import (
-	"digital-voting/account_manager"
 	"digital-voting/node"
+	"digital-voting/node/account_manager"
 	"digital-voting/signature/keys"
 )
 

@@ -2,10 +2,10 @@ package main
 
 import (
 	"digital-voting/account"
-	ip "digital-voting/account_manager"
 	"digital-voting/block"
 	"digital-voting/blockchain"
 	nd "digital-voting/node"
+	ip "digital-voting/node/account_manager"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"

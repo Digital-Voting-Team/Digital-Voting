@@ -1,11 +1,11 @@
 package validation
 
 import (
-	"digital-voting/account_manager"
 	"digital-voting/block"
 	"digital-voting/blockchain"
 	"digital-voting/merkle_tree"
 	"digital-voting/node"
+	"digital-voting/node/account_manager"
 	"digital-voting/signature/keys"
 	"digital-voting/signer"
 	tx "digital-voting/transaction"
