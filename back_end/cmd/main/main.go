@@ -46,7 +46,10 @@ func main() {
 
 	validator.SignBlock(genesisBlock)
 	currentBlockchain := &blockchain.Blockchain{}
-	validator.AddBlockToChain(currentBlockchain, genesisBlock)
+	err := validator.AddBlockToChain(currentBlockchain, genesisBlock)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 
 	// Add first block with users
 	user1 := keys.FromPrivateKey(keys.PrivateKeyBytes{1}, sign.Curve)
