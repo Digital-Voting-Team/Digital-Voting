@@ -101,13 +101,3 @@ func (tx *TxVotingCreation) ActualizeIdentities(node *node.Node) {
 		Whitelist:         tx.Whitelist,
 	})
 }
-
-func (tx *TxVotingCreation) ActualizeIdentities(node *node.Node) {
-	node.VotingProvider.AddNewVoting(indexed_data.VotingDTO{
-		Hash:              tx.GetHash(),
-		ExpirationDate:    tx.ExpirationDate,
-		VotingDescription: tx.VotingDescription,
-		Answers:           tx.Answers,
-		Whitelist:         tx.Whitelist,
-	})
-}
