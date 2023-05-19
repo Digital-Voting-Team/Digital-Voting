@@ -107,11 +107,11 @@ func (tx *Transaction) VerifySignature() bool {
 }
 
 func (tx *Transaction) CheckOnCreate(node *node.Node) bool {
-	if !tx.TxBody.CheckOnCreate(node) || !tx.TxBody.CheckPublicKeyByRole(node, tx.PublicKey) {
-		return false
-	}
+	return tx.TxBody.CheckOnCreate(node, tx.PublicKey) && tx.VerifySignature()
+}
 
-	return tx.VerifySignature()
+func (tx *Transaction) Verify(node *node.Node) bool {
+	return tx.TxBody.Verify(node, tx.PublicKey) && tx.VerifySignature()
 }
 
 func (tx *Transaction) GetTxBody() TxBody {

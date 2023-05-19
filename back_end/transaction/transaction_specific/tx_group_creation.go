@@ -87,18 +87,26 @@ func (tx *TxGroupCreation) CheckPublicKeyByRole(node *node.Node, publicKey keys.
 	return node.AccountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
-func (tx *TxGroupCreation) CheckOnCreate(node *node.Node) bool {
-	if node.AccountManager.CheckPubKeyPresence(tx.GroupIdentifier, account_manager.GroupIdentifier) {
-		return false
-	}
-
+func (tx *TxGroupCreation) checkData(node *node.Node) bool {
 	for _, pubKey := range tx.MembersPublicKeys {
 		if !node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
 			return false
 		}
 	}
 
-	return true
+	return len(tx.MembersPublicKeys) > 0 && tx.GroupIdentifier != [33]byte{} && tx.GroupName != [256]byte{}
+}
+
+func (tx *TxGroupCreation) CheckOnCreate(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	if node.AccountManager.CheckPubKeyPresence(tx.GroupIdentifier, account_manager.GroupIdentifier) {
+		return false
+	}
+
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
+}
+
+func (tx *TxGroupCreation) Verify(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
 }
 
 func (tx *TxGroupCreation) ActualizeIdentities(node *node.Node) {

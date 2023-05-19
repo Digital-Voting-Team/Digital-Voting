@@ -69,7 +69,7 @@ func (tx *TxVote) CheckPublicKeyByRole(node *node.Node, publicKey keys.PublicKey
 	return false
 }
 
-func (tx *TxVote) CheckOnCreate(node *node.Node) bool {
+func (tx *TxVote) checkData(node *node.Node) bool {
 	// TODO: think of date validation
 
 	indexedVoting := node.VotingProvider.GetVoting(tx.VotingLink)
@@ -82,4 +82,12 @@ func (tx *TxVote) CheckOnCreate(node *node.Node) bool {
 	}
 
 	return true
+}
+
+func (tx *TxVote) CheckOnCreate(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
+}
+
+func (tx *TxVote) Verify(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
 }

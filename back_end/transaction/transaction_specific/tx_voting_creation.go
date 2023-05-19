@@ -73,7 +73,7 @@ func (tx *TxVotingCreation) CheckPublicKeyByRole(node *node.Node, publicKey keys
 	return node.AccountManager.CheckPubKeyPresence(publicKey, account_manager.VotingCreationAdmin)
 }
 
-func (tx *TxVotingCreation) CheckOnCreate(node *node.Node) bool {
+func (tx *TxVotingCreation) checkData(node *node.Node) bool {
 	// TODO: think of date validation
 	for _, pubKey := range tx.Whitelist {
 		if !node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.User) &&
@@ -81,7 +81,25 @@ func (tx *TxVotingCreation) CheckOnCreate(node *node.Node) bool {
 			return false
 		}
 	}
-	return true
+	return len(tx.Answers) > 0 && len(tx.Whitelist) > 0 && tx.VotingDescription != [1024]byte{}
+}
+
+func (tx *TxVotingCreation) CheckOnCreate(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
+}
+
+func (tx *TxVotingCreation) Verify(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
+}
+
+func (tx *TxVotingCreation) ActualizeIdentities(node *node.Node) {
+	node.VotingProvider.AddNewVoting(indexed_data.VotingDTO{
+		Hash:              tx.GetHash(),
+		ExpirationDate:    tx.ExpirationDate,
+		VotingDescription: tx.VotingDescription,
+		Answers:           tx.Answers,
+		Whitelist:         tx.Whitelist,
+	})
 }
 
 func (tx *TxVotingCreation) ActualizeIdentities(node *node.Node) {

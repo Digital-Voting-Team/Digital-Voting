@@ -59,10 +59,15 @@ func (tx *TxAccountCreation) CheckPublicKeyByRole(node *node.Node, publicKey key
 	return node.AccountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
-func (tx *TxAccountCreation) CheckOnCreate(node *node.Node) bool {
+func (tx *TxAccountCreation) CheckOnCreate(node *node.Node, publicKey keys.PublicKeyBytes) bool {
 	return !node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.User) &&
 		!node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.RegistrationAdmin) &&
-		!node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.VotingCreationAdmin)
+		!node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.VotingCreationAdmin) &&
+		tx.CheckPublicKeyByRole(node, publicKey)
+}
+
+func (tx *TxAccountCreation) Verify(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.CheckPublicKeyByRole(node, publicKey)
 }
 
 func (tx *TxAccountCreation) ActualizeIdentities(node *node.Node) {

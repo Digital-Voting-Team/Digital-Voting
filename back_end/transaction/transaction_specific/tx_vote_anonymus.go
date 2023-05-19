@@ -96,7 +96,7 @@ func (tx *TxVoteAnonymous) VerifySignature() bool {
 	return ecdsaRs.VerifyBytes(tx.GetSignatureMessage(), tx.PublicKeys, tx.RingSignature, tx.KeyImage)
 }
 
-func (tx *TxVoteAnonymous) CheckOnCreate(node *node.Node) bool {
+func (tx *TxVoteAnonymous) checkData(node *node.Node) bool {
 	// TODO: think of date validation
 
 	indexedVoting := node.VotingProvider.GetVoting(tx.VotingLink)
@@ -129,7 +129,15 @@ func (tx *TxVoteAnonymous) CheckOnCreate(node *node.Node) bool {
 		}
 	}
 
-	return tx.VerifySignature()
+	return true
+}
+
+func (tx *TxVoteAnonymous) CheckOnCreate(node *node.Node) bool {
+	return tx.checkData(node) && tx.VerifySignature()
+}
+
+func (tx *TxVoteAnonymous) Verify(node *node.Node) bool {
+	return tx.checkData(node) && tx.VerifySignature()
 }
 
 func (tx *TxVoteAnonymous) GetTxBody() tx.TxBody {

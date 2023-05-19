@@ -10,6 +10,7 @@ type ITransaction interface {
 	Print()
 	GetTxType() TxType
 	CheckOnCreate(node *node.Node) bool
+	Verify(node *node.Node) bool
 	VerifySignature() bool
 	GetTxBody() TxBody
 }

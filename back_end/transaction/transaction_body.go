@@ -7,6 +7,7 @@ import (
 
 type TxBody interface {
 	GetSignatureMessage() string
-	CheckOnCreate(node *node.Node) bool
+	CheckOnCreate(node *node.Node, publicKey keys.PublicKeyBytes) bool
+	Verify(node *node.Node, publicKey keys.PublicKeyBytes) bool
 	CheckPublicKeyByRole(node *node.Node, publicKey keys.PublicKeyBytes) bool
 }
