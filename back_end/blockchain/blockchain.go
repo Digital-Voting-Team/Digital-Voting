@@ -5,13 +5,18 @@ import (
 	"fmt"
 )
 
-// Blockchain TODO: create class Node with Blockchain and indexed databases
 type Blockchain struct {
 	Blocks []*block.Block
 }
 
-func (b *Blockchain) AddBlock(block *block.Block) {
+func (b *Blockchain) AddBlock(block *block.Block) error {
+	if block == nil {
+		return fmt.Errorf("block is nil")
+	}
+
 	b.Blocks = append(b.Blocks, block)
+
+	return nil
 }
 
 func (b *Blockchain) GetBlock(hash [32]byte) (*block.Block, error) {
