@@ -2,28 +2,27 @@ package indexed_data
 
 import (
 	"digital-voting/signature/keys"
-	ts "digital-voting/transaction/transaction_specific"
 )
 
 type GroupProvider struct {
-	IndexedGroups map[[33]byte]ts.TxGroupCreation
+	IndexedGroups map[[33]byte]GroupDTO
 }
 
 func NewGroupProvider() *GroupProvider {
 	return &GroupProvider{
-		IndexedGroups: map[[33]byte]ts.TxGroupCreation{},
+		IndexedGroups: map[[33]byte]GroupDTO{},
 	}
 }
 
-func (gp *GroupProvider) AddNewGroup(tx ts.TxGroupCreation) {
-	identifier := tx.GroupIdentifier
+func (gp *GroupProvider) AddNewGroup(group GroupDTO) {
+	identifier := group.GroupIdentifier
 	_, exists := gp.IndexedGroups[identifier]
 	if !exists {
-		gp.IndexedGroups[identifier] = tx
+		gp.IndexedGroups[identifier] = group
 	}
 }
 
-func (gp *GroupProvider) GetTx(identifier [33]byte) ts.TxGroupCreation {
+func (gp *GroupProvider) GetGroup(identifier [33]byte) GroupDTO {
 	return gp.IndexedGroups[identifier]
 }
 

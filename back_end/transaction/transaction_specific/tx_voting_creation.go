@@ -2,7 +2,9 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
-	"digital-voting/identity_provider"
+	"digital-voting/node"
+	"digital-voting/node/account_manager"
+	"digital-voting/node/indexed_data"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -67,16 +69,35 @@ func (tx *TxVotingCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxVotingCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.VotingCreationAdmin)
+func (tx *TxVotingCreation) CheckPublicKeyByRole(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return node.AccountManager.CheckPubKeyPresence(publicKey, account_manager.VotingCreationAdmin)
 }
 
-func (tx *TxVotingCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
+func (tx *TxVotingCreation) checkData(node *node.Node) bool {
 	// TODO: think of date validation
 	for _, pubKey := range tx.Whitelist {
-		if !identityProvider.CheckPubKeyPresence(pubKey, identity_provider.User) {
+		if !node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.User) &&
+			!node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.GroupIdentifier) {
 			return false
 		}
 	}
-	return true
+	return len(tx.Answers) > 0 && len(tx.Whitelist) > 0 && tx.VotingDescription != [1024]byte{}
+}
+
+func (tx *TxVotingCreation) CheckOnCreate(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
+}
+
+func (tx *TxVotingCreation) Verify(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
+}
+
+func (tx *TxVotingCreation) ActualizeIdentities(node *node.Node) {
+	node.VotingProvider.AddNewVoting(indexed_data.VotingDTO{
+		Hash:              tx.GetHash(),
+		ExpirationDate:    tx.ExpirationDate,
+		VotingDescription: tx.VotingDescription,
+		Answers:           tx.Answers,
+		Whitelist:         tx.Whitelist,
+	})
 }

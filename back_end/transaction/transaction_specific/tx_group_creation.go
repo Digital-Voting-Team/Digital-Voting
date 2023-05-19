@@ -2,7 +2,9 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
-	"digital-voting/identity_provider"
+	"digital-voting/node"
+	"digital-voting/node/account_manager"
+	"digital-voting/node/indexed_data"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -81,22 +83,37 @@ func (tx *TxGroupCreation) IsEqual(otherTransaction *TxGroupCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxGroupCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.RegistrationAdmin)
+func (tx *TxGroupCreation) CheckPublicKeyByRole(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return node.AccountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
-func (tx *TxGroupCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
-	if identityProvider.CheckPubKeyPresence(tx.GroupIdentifier, identity_provider.GroupIdentifier) {
-		return false
-	}
+func (tx *TxGroupCreation) checkData(node *node.Node) bool {
 	for _, pubKey := range tx.MembersPublicKeys {
-		if !identityProvider.CheckPubKeyPresence(pubKey, identity_provider.User) {
+		if !node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
 			return false
 		}
 	}
-	return true
+
+	return len(tx.MembersPublicKeys) > 0 && tx.GroupIdentifier != [33]byte{} && tx.GroupName != [256]byte{}
 }
 
-func (tx *TxGroupCreation) ActualizeIdentities(identityProvider *identity_provider.IdentityProvider) {
-	identityProvider.AddPubKey(tx.GroupIdentifier, identity_provider.GroupIdentifier)
+func (tx *TxGroupCreation) CheckOnCreate(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	if node.AccountManager.CheckPubKeyPresence(tx.GroupIdentifier, account_manager.GroupIdentifier) {
+		return false
+	}
+
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
+}
+
+func (tx *TxGroupCreation) Verify(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
+}
+
+func (tx *TxGroupCreation) ActualizeIdentities(node *node.Node) {
+	node.AccountManager.AddPubKey(tx.GroupIdentifier, account_manager.GroupIdentifier)
+	node.GroupProvider.AddNewGroup(indexed_data.GroupDTO{
+		GroupIdentifier:   tx.GroupIdentifier,
+		GroupName:         tx.GroupName,
+		MembersPublicKeys: tx.MembersPublicKeys,
+	})
 }

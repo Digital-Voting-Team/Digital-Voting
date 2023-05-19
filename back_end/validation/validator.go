@@ -3,8 +3,8 @@ package validation
 import (
 	"digital-voting/block"
 	"digital-voting/blockchain"
-	"digital-voting/identity_provider"
 	"digital-voting/merkle_tree"
+	"digital-voting/node"
 	"digital-voting/signature/keys"
 	"digital-voting/signer"
 	tx "digital-voting/transaction"
@@ -18,7 +18,7 @@ type Validator struct {
 	// TODO: think of data structure to store in future
 	ValidatorsAddresses []any
 	MemPool             []tx.ITransaction
-	IdentityProvider    *identity_provider.IdentityProvider
+	Node                *node.Node
 	BlockSigner         *signer.BlockSigner
 }
 
@@ -33,7 +33,7 @@ func (v *Validator) isInMemPool(transaction tx.ITransaction) bool {
 }
 
 func (v *Validator) AddToMemPool(newTransaction tx.ITransaction) {
-	if !v.isInMemPool(newTransaction) && newTransaction.Validate(v.IdentityProvider) {
+	if !v.isInMemPool(newTransaction) && newTransaction.CheckOnCreate(v.Node) {
 		v.MemPool = append(v.MemPool, newTransaction)
 	}
 }
@@ -74,19 +74,19 @@ func (v *Validator) SignBlock(block *block.Block) {
 	v.BlockSigner.SignBlock(v.KeyPair, block)
 }
 
-func (v *Validator) AddBlockToChain(blockChain *blockchain.Blockchain, block *block.Block) {
-	blockChain.AddBlock(block)
+func (v *Validator) AddBlockToChain(blockchain *blockchain.Blockchain, block *block.Block) {
+	blockchain.AddBlock(block)
 }
 
 type IdentityActualizer interface {
-	ActualizeIdentities(identityProvider *identity_provider.IdentityProvider)
+	ActualizeIdentities(node *node.Node)
 }
 
 func (v *Validator) ActualizeIdentityProvider(block *block.Block) {
 	for _, transaction := range block.Body.Transactions {
 		txExact, ok := transaction.GetTxBody().(IdentityActualizer)
 		if ok {
-			txExact.ActualizeIdentities(v.IdentityProvider)
+			txExact.ActualizeIdentities(v.Node)
 		}
 	}
 }

@@ -2,7 +2,8 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
-	"digital-voting/identity_provider"
+	"digital-voting/node"
+	"digital-voting/node/account_manager"
 	"digital-voting/signature/keys"
 	ringSignature "digital-voting/signature/signatures/ring_signature"
 	tx "digital-voting/transaction"
@@ -95,15 +96,48 @@ func (tx *TxVoteAnonymous) VerifySignature() bool {
 	return ecdsaRs.VerifyBytes(tx.GetSignatureMessage(), tx.PublicKeys, tx.RingSignature, tx.KeyImage)
 }
 
-func (tx *TxVoteAnonymous) Validate(identityProvider *identity_provider.IdentityProvider) bool {
-	// TODO: add a way of getting voting by its link to check connected data
+func (tx *TxVoteAnonymous) checkData(node *node.Node) bool {
+	// TODO: think of date validation
+
+	indexedVoting := node.VotingProvider.GetVoting(tx.VotingLink)
+	if indexedVoting.Hash == [32]byte{} {
+		return false
+	}
+
+	if tx.Answer < 0 || tx.Answer >= uint8(len(indexedVoting.Answers)) {
+		return false
+	}
+
+	whiteList := node.VotingProvider.GetVoting(tx.VotingLink).Whitelist
+
 	for _, pubKey := range tx.PublicKeys {
-		if !identityProvider.CheckPubKeyPresence(pubKey, identity_provider.User) {
+		if !node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
+			return false
+		}
+
+		flag := false
+
+		for _, identifier := range whiteList {
+			if node.GroupProvider.IsGroupMember(identifier, pubKey) || identifier == pubKey {
+				flag = true
+				break
+			}
+		}
+
+		if !flag {
 			return false
 		}
 	}
 
-	return tx.VerifySignature()
+	return true
+}
+
+func (tx *TxVoteAnonymous) CheckOnCreate(node *node.Node) bool {
+	return tx.checkData(node) && tx.VerifySignature()
+}
+
+func (tx *TxVoteAnonymous) Verify(node *node.Node) bool {
+	return tx.checkData(node) && tx.VerifySignature()
 }
 
 func (tx *TxVoteAnonymous) GetTxBody() tx.TxBody {

@@ -2,19 +2,18 @@ package indexed_data
 
 import (
 	"digital-voting/signature/keys"
-	ts "digital-voting/transaction/transaction_specific"
 	"reflect"
 	"testing"
 )
 
 func TestGroupProvider_AddNewGroup(t *testing.T) {
-	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}})
-	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}})
+	tx1 := GroupDTO{GroupIdentifier: [33]byte{1}, GroupName: [256]byte{1}, MembersPublicKeys: []keys.PublicKeyBytes{{1}, {2}}}
+	tx2 := GroupDTO{GroupIdentifier: [33]byte{2}, GroupName: [256]byte{2}, MembersPublicKeys: []keys.PublicKeyBytes{{3}, {4}}}
 
 	gp := NewGroupProvider()
 
 	type args struct {
-		tx ts.TxGroupCreation
+		tx GroupDTO
 	}
 	tests := []struct {
 		name string
@@ -24,14 +23,14 @@ func TestGroupProvider_AddNewGroup(t *testing.T) {
 		{
 			name: "Non existing transaction",
 			args: args{
-				tx: *tx1,
+				tx: tx1,
 			},
 			want: false,
 		},
 		{
 			name: "Existing transaction",
 			args: args{
-				tx: *tx2,
+				tx: tx2,
 			},
 			want: true,
 		},
@@ -47,11 +46,15 @@ func TestGroupProvider_AddNewGroup(t *testing.T) {
 }
 
 func TestGroupProvider_GetTx(t *testing.T) {
-	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}})
-	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}})
+	tx1 := GroupDTO{GroupIdentifier: [33]byte{1}, GroupName: [256]byte{1}, MembersPublicKeys: []keys.PublicKeyBytes{{1}, {2}}}
+	tx2 := GroupDTO{GroupIdentifier: [33]byte{2}, GroupName: [256]byte{2}, MembersPublicKeys: []keys.PublicKeyBytes{{3}, {4}}}
 
 	gp := NewGroupProvider()
-	gp.AddNewGroup(*tx1)
+	gp.AddNewGroup(GroupDTO{
+		GroupIdentifier:   tx1.GroupIdentifier,
+		GroupName:         tx1.GroupName,
+		MembersPublicKeys: tx1.MembersPublicKeys,
+	})
 
 	type args struct {
 		identifier [33]byte
@@ -59,37 +62,38 @@ func TestGroupProvider_GetTx(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want ts.TxGroupCreation
+		want GroupDTO
 	}{
 		{
 			name: "Existing transaction",
 			args: args{
 				identifier: tx1.GroupIdentifier,
 			},
-			want: *tx1,
+			want: tx1,
 		},
 		{
 			name: "Non existing transaction",
 			args: args{
 				identifier: tx2.GroupIdentifier,
 			},
-			want: ts.TxGroupCreation{},
+			want: GroupDTO{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := gp.GetTx(tt.args.identifier); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetTx() = %v, want %v", got, tt.want)
+			if got := gp.GetGroup(tt.args.identifier); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetVoting() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestGroupProvider_IsGroupMember(t *testing.T) {
-	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}})
-	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}})
+	tx1 := GroupDTO{GroupIdentifier: [33]byte{1}, GroupName: [256]byte{1}, MembersPublicKeys: []keys.PublicKeyBytes{{1}, {2}}}
+	tx2 := GroupDTO{GroupIdentifier: [33]byte{2}, GroupName: [256]byte{2}, MembersPublicKeys: []keys.PublicKeyBytes{{3}, {4}}}
+
 	gp := NewGroupProvider()
-	gp.AddNewGroup(*tx1)
+	gp.AddNewGroup(tx1)
 
 	type args struct {
 		groupIdentifier [33]byte
@@ -135,11 +139,11 @@ func TestGroupProvider_IsGroupMember(t *testing.T) {
 }
 
 func TestGroupProvider_RemoveGroup(t *testing.T) {
-	tx1 := ts.NewTxGroupCreation("1", []keys.PublicKeyBytes{{1}, {2}})
-	tx2 := ts.NewTxGroupCreation("2", []keys.PublicKeyBytes{{3}, {4}})
+	tx1 := GroupDTO{GroupIdentifier: [33]byte{1}, GroupName: [256]byte{1}, MembersPublicKeys: []keys.PublicKeyBytes{{1}, {2}}}
+	tx2 := GroupDTO{GroupIdentifier: [33]byte{2}, GroupName: [256]byte{2}, MembersPublicKeys: []keys.PublicKeyBytes{{3}, {4}}}
 
 	gp := NewGroupProvider()
-	gp.AddNewGroup(*tx1)
+	gp.AddNewGroup(tx1)
 
 	type args struct {
 		identifier [33]byte
