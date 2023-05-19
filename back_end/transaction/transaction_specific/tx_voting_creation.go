@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"digital-voting/node"
 	"digital-voting/node/account_manager"
+	"digital-voting/node/indexed_data"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -68,8 +69,8 @@ func (tx *TxVotingCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxVotingCreation) CheckPublicKeyByRole(accountManager *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
-	return accountManager.CheckPubKeyPresence(publicKey, account_manager.VotingCreationAdmin)
+func (tx *TxVotingCreation) CheckPublicKeyByRole(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return node.AccountManager.CheckPubKeyPresence(publicKey, account_manager.VotingCreationAdmin)
 }
 
 func (tx *TxVotingCreation) CheckOnCreate(node *node.Node) bool {
@@ -81,4 +82,14 @@ func (tx *TxVotingCreation) CheckOnCreate(node *node.Node) bool {
 		}
 	}
 	return true
+}
+
+func (tx *TxVotingCreation) ActualizeIdentities(node *node.Node) {
+	node.VotingProvider.AddNewVoting(indexed_data.VotingDTO{
+		Hash:              tx.GetHash(),
+		ExpirationDate:    tx.ExpirationDate,
+		VotingDescription: tx.VotingDescription,
+		Answers:           tx.Answers,
+		Whitelist:         tx.Whitelist,
+	})
 }

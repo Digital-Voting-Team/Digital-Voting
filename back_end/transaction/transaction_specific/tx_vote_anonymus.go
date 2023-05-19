@@ -108,8 +108,23 @@ func (tx *TxVoteAnonymous) CheckOnCreate(node *node.Node) bool {
 		return false
 	}
 
+	whiteList := node.VotingProvider.GetVoting(tx.VotingLink).Whitelist
+
 	for _, pubKey := range tx.PublicKeys {
 		if !node.AccountManager.CheckPubKeyPresence(pubKey, account_manager.User) {
+			return false
+		}
+
+		flag := false
+
+		for _, identifier := range whiteList {
+			if node.GroupProvider.IsGroupMember(identifier, pubKey) || identifier == pubKey {
+				flag = true
+				break
+			}
+		}
+
+		if !flag {
 			return false
 		}
 	}

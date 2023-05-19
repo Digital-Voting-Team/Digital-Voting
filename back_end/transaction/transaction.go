@@ -107,7 +107,7 @@ func (tx *Transaction) VerifySignature() bool {
 }
 
 func (tx *Transaction) CheckOnCreate(node *node.Node) bool {
-	if !tx.TxBody.CheckOnCreate(node) || !tx.TxBody.CheckPublicKeyByRole(node.AccountManager, tx.PublicKey) {
+	if !tx.TxBody.CheckOnCreate(node) || !tx.TxBody.CheckPublicKeyByRole(node, tx.PublicKey) {
 		return false
 	}
 

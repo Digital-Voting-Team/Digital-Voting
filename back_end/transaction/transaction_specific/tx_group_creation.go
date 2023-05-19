@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"digital-voting/node"
 	"digital-voting/node/account_manager"
+	"digital-voting/node/indexed_data"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -82,12 +83,11 @@ func (tx *TxGroupCreation) IsEqual(otherTransaction *TxGroupCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxGroupCreation) CheckPublicKeyByRole(accountManager *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
-	return accountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
+func (tx *TxGroupCreation) CheckPublicKeyByRole(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return node.AccountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
 func (tx *TxGroupCreation) CheckOnCreate(node *node.Node) bool {
-	// TODO: Maybe check in indexed groups?
 	if node.AccountManager.CheckPubKeyPresence(tx.GroupIdentifier, account_manager.GroupIdentifier) {
 		return false
 	}
@@ -101,6 +101,11 @@ func (tx *TxGroupCreation) CheckOnCreate(node *node.Node) bool {
 	return true
 }
 
-func (tx *TxGroupCreation) ActualizeIdentities(accountManager *account_manager.AccountManager) {
-	accountManager.AddPubKey(tx.GroupIdentifier, account_manager.GroupIdentifier)
+func (tx *TxGroupCreation) ActualizeIdentities(node *node.Node) {
+	node.AccountManager.AddPubKey(tx.GroupIdentifier, account_manager.GroupIdentifier)
+	node.GroupProvider.AddNewGroup(indexed_data.GroupDTO{
+		GroupIdentifier:   tx.GroupIdentifier,
+		GroupName:         tx.GroupName,
+		MembersPublicKeys: tx.MembersPublicKeys,
+	})
 }

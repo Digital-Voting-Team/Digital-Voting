@@ -55,18 +55,17 @@ func (tx *TxAccountCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxAccountCreation) CheckPublicKeyByRole(accountManager *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
-	return accountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
+func (tx *TxAccountCreation) CheckPublicKeyByRole(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return node.AccountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
 func (tx *TxAccountCreation) CheckOnCreate(node *node.Node) bool {
-	// TODO: think of a better way to check
 	return !node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.User) &&
 		!node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.RegistrationAdmin) &&
 		!node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.VotingCreationAdmin)
 }
 
-func (tx *TxAccountCreation) ActualizeIdentities(accountManager *account_manager.AccountManager) {
+func (tx *TxAccountCreation) ActualizeIdentities(node *node.Node) {
 	// TODO: think of linkage between enum in account and in identity provider
-	accountManager.AddPubKey(tx.NewPublicKey, account_manager.Identifier(tx.AccountType))
+	node.AccountManager.AddPubKey(tx.NewPublicKey, account_manager.Identifier(tx.AccountType))
 }

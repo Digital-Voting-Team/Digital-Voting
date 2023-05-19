@@ -4,6 +4,7 @@ import (
 	"digital-voting/account"
 	nd "digital-voting/node"
 	"digital-voting/node/account_manager"
+	"digital-voting/node/indexed_data"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
@@ -37,17 +38,17 @@ func TestValidateTransaction(t *testing.T) {
 	txGroupCreation := transaction.NewTransaction(transaction.GroupCreation, grpCreationBody)
 	txSigner.SignTransaction(keyPair1, txGroupCreation)
 
+	castedTxGrpCreationBody := txGroupCreation.TxBody.(*transaction_specific.TxGroupCreation)
+	node.GroupProvider.AddNewGroup(indexed_data.GroupDTO{
+		GroupIdentifier:   castedTxGrpCreationBody.GroupIdentifier,
+		GroupName:         castedTxGrpCreationBody.GroupName,
+		MembersPublicKeys: castedTxGrpCreationBody.MembersPublicKeys,
+	})
+
 	expirationDate := time.Now()
 	votingDescr := "EPS-41 supervisor voting"
 	answers := []string{"Veres M.M.", "Chentsov O.I."}
 	whiteList := [][33]byte{keyPair1.PublicToBytes()}
-	votingCreationBody := transaction_specific.NewTxVotingCreation(expirationDate, votingDescr, answers, whiteList)
-	txVotingCreation := transaction.NewTransaction(transaction.VotingCreation, votingCreationBody)
-	txSigner.SignTransaction(keyPair1, txVotingCreation)
-
-	voteBody := transaction_specific.NewTxVote([32]byte{}, 0)
-	txVote := transaction.NewTransaction(transaction.Vote, voteBody)
-	txSigner.SignTransaction(keyPair1, txVote)
 
 	var publicKeys []*curve.Point
 	publicKeys = append(publicKeys, keyPair1.GetPublicKey())
@@ -57,9 +58,29 @@ func TestValidateTransaction(t *testing.T) {
 			log.Panicln(err)
 		}
 		publicKeys = append(publicKeys, tempKeyPair.GetPublicKey())
-		node.AccountManager.AddPubKey(tempKeyPair.PublicToBytes(), account_manager.User)
+		publicBytes := tempKeyPair.PublicToBytes()
+		node.AccountManager.AddPubKey(publicBytes, account_manager.User)
+		whiteList = append(whiteList, publicBytes)
 	}
-	txVoteAnonymous := transaction_specific.NewTxVoteAnonymous([32]byte{}, 3)
+
+	votingCreationBody := transaction_specific.NewTxVotingCreation(expirationDate, votingDescr, answers, whiteList)
+	txVotingCreation := transaction.NewTransaction(transaction.VotingCreation, votingCreationBody)
+	txSigner.SignTransaction(keyPair1, txVotingCreation)
+
+	castedTxVotingCreationBody := txVotingCreation.TxBody.(*transaction_specific.TxVotingCreation)
+	node.VotingProvider.AddNewVoting(indexed_data.VotingDTO{
+		Hash:              txGroupCreation.GetHash(),
+		ExpirationDate:    castedTxVotingCreationBody.ExpirationDate,
+		VotingDescription: castedTxVotingCreationBody.VotingDescription,
+		Answers:           castedTxVotingCreationBody.Answers,
+		Whitelist:         castedTxVotingCreationBody.Whitelist,
+	})
+
+	voteBody := transaction_specific.NewTxVote(txGroupCreation.GetHash(), 0)
+	txVote := transaction.NewTransaction(transaction.Vote, voteBody)
+	txSigner.SignTransaction(keyPair1, txVote)
+
+	txVoteAnonymous := transaction_specific.NewTxVoteAnonymous(txGroupCreation.GetHash(), 1)
 	txSigner.SignTransactionAnonymous(keyPair1, publicKeys, 0, txVoteAnonymous)
 
 	type args struct {

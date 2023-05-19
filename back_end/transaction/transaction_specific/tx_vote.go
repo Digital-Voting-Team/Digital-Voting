@@ -54,8 +54,19 @@ func (tx *TxVote) IsEqual(otherTransaction *TxVote) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxVote) CheckPublicKeyByRole(accountManager *account_manager.AccountManager, publicKey keys.PublicKeyBytes) bool {
-	return accountManager.CheckPubKeyPresence(publicKey, account_manager.User)
+func (tx *TxVote) CheckPublicKeyByRole(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	if !node.AccountManager.CheckPubKeyPresence(publicKey, account_manager.User) {
+		return false
+	}
+
+	whiteList := node.VotingProvider.GetVoting(tx.VotingLink).Whitelist
+	for _, identifier := range whiteList {
+		if node.GroupProvider.IsGroupMember(identifier, publicKey) || identifier == publicKey {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (tx *TxVote) CheckOnCreate(node *node.Node) bool {

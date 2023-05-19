@@ -5,7 +5,6 @@ import (
 	"digital-voting/blockchain"
 	"digital-voting/merkle_tree"
 	"digital-voting/node"
-	"digital-voting/node/account_manager"
 	"digital-voting/signature/keys"
 	"digital-voting/signer"
 	tx "digital-voting/transaction"
@@ -80,14 +79,14 @@ func (v *Validator) AddBlockToChain(blockchain *blockchain.Blockchain, block *bl
 }
 
 type IdentityActualizer interface {
-	ActualizeIdentities(accountManager *account_manager.AccountManager)
+	ActualizeIdentities(node *node.Node)
 }
 
 func (v *Validator) ActualizeIdentityProvider(block *block.Block) {
 	for _, transaction := range block.Body.Transactions {
 		txExact, ok := transaction.GetTxBody().(IdentityActualizer)
 		if ok {
-			txExact.ActualizeIdentities(v.Node.AccountManager)
+			txExact.ActualizeIdentities(v.Node)
 		}
 	}
 }
