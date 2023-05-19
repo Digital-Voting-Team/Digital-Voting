@@ -1,34 +1,36 @@
-package identity_provider
+package account_manager
 
-type IdentityProvider struct {
-	UserPubKeys               map[[33]byte]struct{}
-	GroupIdentifiers          map[[33]byte]struct{}
-	RegistrationAdminPubKeys  map[[33]byte]struct{}
-	VotingCreatorAdminPubKeys map[[33]byte]struct{}
-	ValidatorPubKeys          map[[33]byte]struct{}
+import "digital-voting/signature/keys"
+
+type AccountManager struct {
+	UserPubKeys               map[keys.PublicKeyBytes]struct{}
+	GroupIdentifiers          map[keys.PublicKeyBytes]struct{}
+	RegistrationAdminPubKeys  map[keys.PublicKeyBytes]struct{}
+	VotingCreatorAdminPubKeys map[keys.PublicKeyBytes]struct{}
+	ValidatorPubKeys          map[keys.PublicKeyBytes]struct{}
 }
 
-type PubKeyType int
-
-func NewIdentityProvider() *IdentityProvider {
-	return &IdentityProvider{
-		UserPubKeys:               map[[33]byte]struct{}{},
-		GroupIdentifiers:          map[[33]byte]struct{}{},
-		RegistrationAdminPubKeys:  map[[33]byte]struct{}{},
-		VotingCreatorAdminPubKeys: map[[33]byte]struct{}{},
-		ValidatorPubKeys:          map[[33]byte]struct{}{},
+func NewAccountManager() *AccountManager {
+	return &AccountManager{
+		UserPubKeys:               map[keys.PublicKeyBytes]struct{}{},
+		GroupIdentifiers:          map[keys.PublicKeyBytes]struct{}{},
+		RegistrationAdminPubKeys:  map[keys.PublicKeyBytes]struct{}{},
+		VotingCreatorAdminPubKeys: map[keys.PublicKeyBytes]struct{}{},
+		ValidatorPubKeys:          map[keys.PublicKeyBytes]struct{}{},
 	}
 }
 
+type Identifier int
+
 const (
-	User PubKeyType = iota
-	GroupIdentifier
+	User Identifier = iota
 	RegistrationAdmin
 	VotingCreationAdmin
+	GroupIdentifier
 	Validator
 )
 
-func (ip *IdentityProvider) AddPubKey(publicKey [33]byte, keyType PubKeyType) {
+func (ip *AccountManager) AddPubKey(publicKey keys.PublicKeyBytes, keyType Identifier) {
 	switch keyType {
 	case User:
 		_, exists := ip.UserPubKeys[publicKey]
@@ -58,7 +60,7 @@ func (ip *IdentityProvider) AddPubKey(publicKey [33]byte, keyType PubKeyType) {
 	}
 }
 
-func (ip *IdentityProvider) CheckPubKeyPresence(publicKey [33]byte, keyType PubKeyType) bool {
+func (ip *AccountManager) CheckPubKeyPresence(publicKey keys.PublicKeyBytes, keyType Identifier) bool {
 	switch keyType {
 	case User:
 		_, exists := ip.UserPubKeys[publicKey]
@@ -80,7 +82,7 @@ func (ip *IdentityProvider) CheckPubKeyPresence(publicKey [33]byte, keyType PubK
 	}
 }
 
-func (ip *IdentityProvider) RemovePubKey(publicKey [33]byte, keyType PubKeyType) {
+func (ip *AccountManager) RemovePubKey(publicKey keys.PublicKeyBytes, keyType Identifier) {
 	switch keyType {
 	case User:
 		delete(ip.UserPubKeys, publicKey)

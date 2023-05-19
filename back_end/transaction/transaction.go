@@ -2,7 +2,7 @@ package transaction
 
 import (
 	"crypto/sha256"
-	"digital-voting/identity_provider"
+	"digital-voting/node"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
 	"encoding/base64"
@@ -106,12 +106,12 @@ func (tx *Transaction) VerifySignature() bool {
 	)
 }
 
-func (tx *Transaction) Validate(identityProvider *identity_provider.IdentityProvider) bool {
-	if !tx.TxBody.Validate(identityProvider) || !tx.TxBody.CheckPublicKeyByRole(identityProvider, tx.PublicKey) {
-		return false
-	}
+func (tx *Transaction) CheckOnCreate(node *node.Node) bool {
+	return tx.TxBody.CheckOnCreate(node, tx.PublicKey) && tx.VerifySignature()
+}
 
-	return tx.VerifySignature()
+func (tx *Transaction) Verify(node *node.Node) bool {
+	return tx.TxBody.Verify(node, tx.PublicKey) && tx.VerifySignature()
 }
 
 func (tx *Transaction) GetTxBody() TxBody {

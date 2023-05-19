@@ -1,13 +1,16 @@
 package transaction
 
-import "digital-voting/identity_provider"
+import (
+	"digital-voting/node"
+)
 
 type ITransaction interface {
 	GetHashString() string
 	GetHash() [32]byte
 	Print()
 	GetTxType() TxType
-	Validate(identityProvider *identity_provider.IdentityProvider) bool
+	CheckOnCreate(node *node.Node) bool
+	Verify(node *node.Node) bool
 	VerifySignature() bool
 	GetTxBody() TxBody
 }

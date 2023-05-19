@@ -2,7 +2,8 @@ package transaction_specific
 
 import (
 	"crypto/sha256"
-	"digital-voting/identity_provider"
+	"digital-voting/node"
+	"digital-voting/node/account_manager"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -53,11 +54,40 @@ func (tx *TxVote) IsEqual(otherTransaction *TxVote) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxVote) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.User)
+func (tx *TxVote) CheckPublicKeyByRole(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	if !node.AccountManager.CheckPubKeyPresence(publicKey, account_manager.User) {
+		return false
+	}
+
+	whiteList := node.VotingProvider.GetVoting(tx.VotingLink).Whitelist
+	for _, identifier := range whiteList {
+		if node.GroupProvider.IsGroupMember(identifier, publicKey) || identifier == publicKey {
+			return true
+		}
+	}
+
+	return false
 }
 
-func (tx *TxVote) Validate(identityProvider *identity_provider.IdentityProvider) bool {
-	// TODO: add a way of getting voting by its link to check connected data
+func (tx *TxVote) checkData(node *node.Node) bool {
+	// TODO: think of date validation
+
+	indexedVoting := node.VotingProvider.GetVoting(tx.VotingLink)
+	if indexedVoting.Hash == [32]byte{} {
+		return false
+	}
+
+	if tx.Answer < 0 || tx.Answer >= uint8(len(indexedVoting.Answers)) {
+		return false
+	}
+
 	return true
+}
+
+func (tx *TxVote) CheckOnCreate(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
+}
+
+func (tx *TxVote) Verify(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
 }

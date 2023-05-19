@@ -3,7 +3,8 @@ package transaction_specific
 import (
 	"crypto/sha256"
 	"digital-voting/account"
-	"digital-voting/identity_provider"
+	"digital-voting/node"
+	"digital-voting/node/account_manager"
 	"digital-voting/signature/keys"
 	"encoding/base64"
 	"encoding/json"
@@ -54,19 +55,22 @@ func (tx *TxAccountCreation) IsEqual(otherTransaction *TxAccountCreation) bool {
 	return tx.GetHash() == otherTransaction.GetHash()
 }
 
-func (tx *TxAccountCreation) CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool {
-	return identityProvider.CheckPubKeyPresence(publicKey, identity_provider.RegistrationAdmin)
+func (tx *TxAccountCreation) CheckPublicKeyByRole(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return node.AccountManager.CheckPubKeyPresence(publicKey, account_manager.RegistrationAdmin)
 }
 
-func (tx *TxAccountCreation) Validate(identityProvider *identity_provider.IdentityProvider) bool {
-	// TODO: think of a better way to check
-	return !identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.User) &&
-		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.RegistrationAdmin) &&
-		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.VotingCreationAdmin) &&
-		!identityProvider.CheckPubKeyPresence(tx.NewPublicKey, identity_provider.GroupIdentifier)
+func (tx *TxAccountCreation) CheckOnCreate(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return !node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.User) &&
+		!node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.RegistrationAdmin) &&
+		!node.AccountManager.CheckPubKeyPresence(tx.NewPublicKey, account_manager.VotingCreationAdmin) &&
+		tx.CheckPublicKeyByRole(node, publicKey)
 }
 
-func (tx *TxAccountCreation) ActualizeIdentities(identityProvider *identity_provider.IdentityProvider) {
+func (tx *TxAccountCreation) Verify(node *node.Node, publicKey keys.PublicKeyBytes) bool {
+	return tx.CheckPublicKeyByRole(node, publicKey)
+}
+
+func (tx *TxAccountCreation) ActualizeIdentities(node *node.Node) {
 	// TODO: think of linkage between enum in account and in identity provider
-	identityProvider.AddPubKey(tx.NewPublicKey, identity_provider.PubKeyType(tx.AccountType))
+	node.AccountManager.AddPubKey(tx.NewPublicKey, account_manager.Identifier(tx.AccountType))
 }
