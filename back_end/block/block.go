@@ -2,6 +2,7 @@ package block
 
 import (
 	"crypto/sha256"
+	"digital-voting/identity_provider"
 	"digital-voting/merkle_tree"
 	"digital-voting/signature/keys"
 	signatures "digital-voting/signature/signatures/single_signature"
@@ -10,7 +11,7 @@ import (
 	"time"
 )
 
-// TODO : add encode, decode, verification
+// TODO : add encode, decode
 
 type Block struct {
 	Header  Header  `json:"header"`
@@ -65,4 +66,15 @@ func (b *Block) GetHashString() string {
 	hash := b.GetHash()
 
 	return base64.URLEncoding.EncodeToString(hash[:])
+}
+
+// TODO : add txs verification
+func (b *Block) Verify(identityProvider *identity_provider.IdentityProvider) bool {
+	merkleRoot := merkle_tree.GetMerkleRoot(b.Body.Transactions)
+
+	if !b.Witness.Verify(identityProvider, b.GetHashString()) {
+		return false
+	}
+
+	return merkleRoot == b.Header.MerkleRoot
 }
