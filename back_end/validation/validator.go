@@ -74,8 +74,8 @@ func (v *Validator) SignBlock(block *block.Block) {
 	v.BlockSigner.SignBlock(v.KeyPair, block)
 }
 
-func (v *Validator) AddBlockToChain(blockchain *blockchain.Blockchain, block *block.Block) {
-	blockchain.AddBlock(block)
+func (v *Validator) AddBlockToChain(blockchain *blockchain.Blockchain, block *block.Block) error {
+	return blockchain.AddBlock(block)
 }
 
 type IdentityActualizer interface {

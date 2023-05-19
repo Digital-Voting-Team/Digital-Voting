@@ -14,6 +14,7 @@ import (
 	stx "digital-voting/transaction/transaction_specific"
 	"digital-voting/validation"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -46,7 +47,10 @@ func main() {
 
 	validator.SignBlock(genesisBlock)
 	currentBlockchain := &blockchain.Blockchain{}
-	validator.AddBlockToChain(currentBlockchain, genesisBlock)
+	err := validator.AddBlockToChain(currentBlockchain, genesisBlock)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 
 	// Add first block with users
 	user1 := keys.FromPrivateKey(keys.PrivateKeyBytes{1}, sign.Curve)
@@ -109,7 +113,10 @@ func main() {
 	validator.AddToMemPool(txVote3)
 
 	block3 := validator.CreateBlock(block2.GetHash())
-	validator.AddBlockToChain(currentBlockchain, block3)
+	err = validator.AddBlockToChain(currentBlockchain, block3)
+	if err != nil {
+		log.Panicln(err)
+	}
 	validator.ActualizeIdentityProvider(block3)
 
 	// Print blockchain

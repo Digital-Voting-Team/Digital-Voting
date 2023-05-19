@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"digital-voting/merkle_tree"
 	"digital-voting/signature/keys"
-	signatures "digital-voting/signature/signatures/single_signature"
+	signature "digital-voting/signature/signatures/single_signature"
 	tx "digital-voting/transaction"
 	"encoding/base64"
 	"time"
@@ -37,7 +37,7 @@ func NewBlock(txs []tx.ITransaction, previous [32]byte) *Block {
 	return block
 }
 
-func (b *Block) Sign(publicKey keys.PublicKeyBytes, signature signatures.SingleSignatureBytes) {
+func (b *Block) Sign(publicKey keys.PublicKeyBytes, signature signature.SingleSignatureBytes) {
 	b.Witness.addSignature(publicKey, signature)
 }
 
