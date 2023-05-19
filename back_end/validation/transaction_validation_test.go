@@ -2,7 +2,9 @@ package validation
 
 import (
 	"digital-voting/account"
-	"digital-voting/identity_provider"
+	nd "digital-voting/node"
+	"digital-voting/node/account_manager"
+	"digital-voting/node/indexed_data"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
@@ -17,12 +19,12 @@ import (
 func TestValidateTransaction(t *testing.T) {
 	sign := singleSignature.NewECDSA()
 	txSigner := signer.NewTransactionSigner()
-	identityProvider := identity_provider.NewIdentityProvider()
+	node := nd.NewNode()
 
 	keyPair1, _ := keys.Random(sign.Curve)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.RegistrationAdmin)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.VotingCreationAdmin)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), identity_provider.User)
+	node.AccountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.RegistrationAdmin)
+	node.AccountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.VotingCreationAdmin)
+	node.AccountManager.AddPubKey(keyPair1.PublicToBytes(), account_manager.User)
 
 	keyPair2, _ := keys.Random(sign.Curve)
 	accCreationBody := transaction_specific.NewTxAccCreation(account.RegistrationAdmin, keyPair2.PublicToBytes())
@@ -36,17 +38,17 @@ func TestValidateTransaction(t *testing.T) {
 	txGroupCreation := transaction.NewTransaction(transaction.GroupCreation, grpCreationBody)
 	txSigner.SignTransaction(keyPair1, txGroupCreation)
 
+	castedTxGrpCreationBody := txGroupCreation.TxBody.(*transaction_specific.TxGroupCreation)
+	node.GroupProvider.AddNewGroup(indexed_data.GroupDTO{
+		GroupIdentifier:   castedTxGrpCreationBody.GroupIdentifier,
+		GroupName:         castedTxGrpCreationBody.GroupName,
+		MembersPublicKeys: castedTxGrpCreationBody.MembersPublicKeys,
+	})
+
 	expirationDate := time.Now()
 	votingDescr := "EPS-41 supervisor voting"
 	answers := []string{"Veres M.M.", "Chentsov O.I."}
 	whiteList := [][33]byte{keyPair1.PublicToBytes()}
-	votingCreationBody := transaction_specific.NewTxVotingCreation(expirationDate, votingDescr, answers, whiteList)
-	txVotingCreation := transaction.NewTransaction(transaction.VotingCreation, votingCreationBody)
-	txSigner.SignTransaction(keyPair1, txVotingCreation)
-
-	voteBody := transaction_specific.NewTxVote([32]byte{}, 0)
-	txVote := transaction.NewTransaction(transaction.Vote, voteBody)
-	txSigner.SignTransaction(keyPair1, txVote)
 
 	var publicKeys []*curve.Point
 	publicKeys = append(publicKeys, keyPair1.GetPublicKey())
@@ -56,14 +58,34 @@ func TestValidateTransaction(t *testing.T) {
 			log.Panicln(err)
 		}
 		publicKeys = append(publicKeys, tempKeyPair.GetPublicKey())
-		identityProvider.AddPubKey(tempKeyPair.PublicToBytes(), identity_provider.User)
+		publicBytes := tempKeyPair.PublicToBytes()
+		node.AccountManager.AddPubKey(publicBytes, account_manager.User)
+		whiteList = append(whiteList, publicBytes)
 	}
-	txVoteAnonymous := transaction_specific.NewTxVoteAnonymous([32]byte{}, 3)
+
+	votingCreationBody := transaction_specific.NewTxVotingCreation(expirationDate, votingDescr, answers, whiteList)
+	txVotingCreation := transaction.NewTransaction(transaction.VotingCreation, votingCreationBody)
+	txSigner.SignTransaction(keyPair1, txVotingCreation)
+
+	castedTxVotingCreationBody := txVotingCreation.TxBody.(*transaction_specific.TxVotingCreation)
+	node.VotingProvider.AddNewVoting(indexed_data.VotingDTO{
+		Hash:              txGroupCreation.GetHash(),
+		ExpirationDate:    castedTxVotingCreationBody.ExpirationDate,
+		VotingDescription: castedTxVotingCreationBody.VotingDescription,
+		Answers:           castedTxVotingCreationBody.Answers,
+		Whitelist:         castedTxVotingCreationBody.Whitelist,
+	})
+
+	voteBody := transaction_specific.NewTxVote(txGroupCreation.GetHash(), 0)
+	txVote := transaction.NewTransaction(transaction.Vote, voteBody)
+	txSigner.SignTransaction(keyPair1, txVote)
+
+	txVoteAnonymous := transaction_specific.NewTxVoteAnonymous(txGroupCreation.GetHash(), 1)
 	txSigner.SignTransactionAnonymous(keyPair1, publicKeys, 0, txVoteAnonymous)
 
 	type args struct {
-		tx               transaction.ITransaction
-		identityProvider *identity_provider.IdentityProvider
+		tx   transaction.ITransaction
+		node *nd.Node
 	}
 	tests := []struct {
 		name string
@@ -73,56 +95,56 @@ func TestValidateTransaction(t *testing.T) {
 		{
 			name: "Valid Account creation transaction",
 			args: args{
-				tx:               txAccountCreation,
-				identityProvider: identityProvider,
+				tx:   txAccountCreation,
+				node: node,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Group creation transaction",
 			args: args{
-				tx:               txGroupCreation,
-				identityProvider: identityProvider,
+				tx:   txGroupCreation,
+				node: node,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Voting creation transaction",
 			args: args{
-				tx:               txVotingCreation,
-				identityProvider: identityProvider,
+				tx:   txVotingCreation,
+				node: node,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Vote transaction",
 			args: args{
-				tx:               txVote,
-				identityProvider: identityProvider,
+				tx:   txVote,
+				node: node,
 			},
 			want: true,
 		},
 		{
 			name: "Valid Vote anonymous transaction",
 			args: args{
-				tx:               txVoteAnonymous,
-				identityProvider: identityProvider,
+				tx:   txVoteAnonymous,
+				node: node,
 			},
 			want: true,
 		},
 		{
 			name: "Invalid identity provider and/or administrator",
 			args: args{
-				tx:               txVoteAnonymous,
-				identityProvider: identity_provider.NewIdentityProvider(),
+				tx:   txVoteAnonymous,
+				node: nd.NewNode(),
 			},
 			want: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ValidateTransaction(tt.args.tx, tt.args.identityProvider); got != tt.want {
-				t.Errorf("ValidateTransaction() = %v, want %v", got, tt.want)
+			if got := CheckOnCreateTransaction(tt.args.tx, tt.args.node); got != tt.want {
+				t.Errorf("CheckOnCreateTransaction() = %v, want %v", got, tt.want)
 			}
 		})
 	}

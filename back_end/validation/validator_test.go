@@ -3,8 +3,9 @@ package validation
 import (
 	"digital-voting/account"
 	blk "digital-voting/block"
-	ip "digital-voting/identity_provider"
 	"digital-voting/merkle_tree"
+	nd "digital-voting/node"
+	ip "digital-voting/node/account_manager"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
 	"digital-voting/signer"
@@ -70,12 +71,12 @@ func TestIsInMemPool(t *testing.T) {
 func TestCreateBlock(t *testing.T) {
 	sign := singleSignature.NewECDSA()
 	txSigner := signer.NewTransactionSigner()
-	identityProvider := ip.NewIdentityProvider()
+	node := nd.NewNode()
 	keyPair1, _ := keys.Random(sign.Curve)
 
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), ip.User)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), ip.VotingCreationAdmin)
-	identityProvider.AddPubKey(keyPair1.PublicToBytes(), ip.RegistrationAdmin)
+	node.AccountManager.AddPubKey(keyPair1.PublicToBytes(), ip.User)
+	node.AccountManager.AddPubKey(keyPair1.PublicToBytes(), ip.VotingCreationAdmin)
+	node.AccountManager.AddPubKey(keyPair1.PublicToBytes(), ip.RegistrationAdmin)
 
 	keyPair2, _ := keys.Random(sign.Curve)
 	accCreationBody := tx_specific.NewTxAccCreation(account.RegistrationAdmin, keyPair2.PublicToBytes())
@@ -102,9 +103,9 @@ func TestCreateBlock(t *testing.T) {
 	txSigner.SignTransaction(keyPair1, txVote)
 
 	validator := &Validator{
-		KeyPair:          keyPair1,
-		IdentityProvider: identityProvider,
-		BlockSigner:      signer.NewBlockSigner(),
+		KeyPair:     keyPair1,
+		Node:        node,
+		BlockSigner: signer.NewBlockSigner(),
 	}
 	validator.AddToMemPool(txAccountCreation)
 	validator.AddToMemPool(txGroupCreation)
@@ -157,19 +158,19 @@ func TestCreateBlock(t *testing.T) {
 
 func TestActualizeIdentityProvider(t *testing.T) {
 	sign := singleSignature.NewECDSA()
-	identityProvider := ip.NewIdentityProvider()
+	node := nd.NewNode()
 
 	validatorKeyPair, _ := keys.Random(sign.Curve)
-	identityProvider.AddPubKey(validatorKeyPair.PublicToBytes(), ip.Validator)
+	node.AccountManager.AddPubKey(validatorKeyPair.PublicToBytes(), ip.Validator)
 
 	validator := &Validator{
-		KeyPair:          validatorKeyPair,
-		IdentityProvider: identityProvider,
-		BlockSigner:      signer.NewBlockSigner(),
+		KeyPair:     validatorKeyPair,
+		Node:        node,
+		BlockSigner: signer.NewBlockSigner(),
 	}
 
 	adminKeyPair, _ := keys.Random(sign.Curve)
-	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.RegistrationAdmin)
+	node.AccountManager.AddPubKey(adminKeyPair.PublicToBytes(), ip.RegistrationAdmin)
 
 	userKeyPair, _ := keys.Random(sign.Curve)
 	transaction := tx.NewTransaction(tx.AccountCreation, tx_specific.NewTxAccCreation(account.User, userKeyPair.PublicToBytes()))
@@ -180,8 +181,8 @@ func TestActualizeIdentityProvider(t *testing.T) {
 
 	validator.AddToMemPool(transaction)
 
-	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.VotingCreationAdmin)
-	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.User)
+	node.AccountManager.AddPubKey(adminKeyPair.PublicToBytes(), ip.VotingCreationAdmin)
+	node.AccountManager.AddPubKey(adminKeyPair.PublicToBytes(), ip.User)
 	expirationDate := time.Now()
 	votingDescr := "EPS-41 supervisor voting"
 	answers := []string{"Veres M.M.", "Chentsov O.I."}
@@ -224,7 +225,7 @@ func TestActualizeIdentityProvider(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := identityProvider.CheckPubKeyPresence(tt.args.publicKey, tt.args.keyType); got != tt.wantBool {
+			if got := node.AccountManager.CheckPubKeyPresence(tt.args.publicKey, tt.args.keyType); got != tt.wantBool {
 				t.Errorf("Is new identifier in identity provider: %v, should it be there: %v", got, tt.wantBool)
 			}
 		})

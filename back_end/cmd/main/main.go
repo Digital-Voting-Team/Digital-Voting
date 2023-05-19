@@ -4,7 +4,8 @@ import (
 	"digital-voting/account"
 	"digital-voting/block"
 	"digital-voting/blockchain"
-	ip "digital-voting/identity_provider"
+	nd "digital-voting/node"
+	ip "digital-voting/node/account_manager"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
@@ -19,20 +20,20 @@ import (
 func main() {
 	// Add genesis block
 	sign := singleSignature.NewECDSA()
-	identityProvider := ip.NewIdentityProvider()
+	node := nd.NewNode()
 
 	validatorKeyPair, _ := keys.Random(sign.Curve)
-	identityProvider.AddPubKey(validatorKeyPair.PublicToBytes(), ip.Validator)
+	node.AccountManager.AddPubKey(validatorKeyPair.PublicToBytes(), ip.Validator)
 
 	validator := &validation.Validator{
-		KeyPair:          validatorKeyPair,
-		IdentityProvider: identityProvider,
-		BlockSigner:      signer.NewBlockSigner(),
+		KeyPair:     validatorKeyPair,
+		Node:        node,
+		BlockSigner: signer.NewBlockSigner(),
 	}
 
 	adminKeyPair, _ := keys.Random(sign.Curve)
-	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.RegistrationAdmin)
-	identityProvider.AddPubKey(adminKeyPair.PublicToBytes(), ip.VotingCreationAdmin)
+	node.AccountManager.AddPubKey(adminKeyPair.PublicToBytes(), ip.RegistrationAdmin)
+	node.AccountManager.AddPubKey(adminKeyPair.PublicToBytes(), ip.VotingCreationAdmin)
 
 	genesisTransaction1 := tx.NewTransaction(tx.AccountCreation, stx.NewTxAccCreation(account.RegistrationAdmin, adminKeyPair.PublicToBytes()))
 	genesisTransaction2 := tx.NewTransaction(tx.AccountCreation, stx.NewTxAccCreation(account.VotingCreationAdmin, adminKeyPair.PublicToBytes()))
@@ -69,9 +70,9 @@ func main() {
 	validator.ActualizeIdentityProvider(block1)
 
 	// Add second block with voting and group
-	whitelist := make([][33]byte, 0, len(identityProvider.UserPubKeys))
-	members := make([]keys.PublicKeyBytes, 0, len(identityProvider.UserPubKeys))
-	for k := range identityProvider.UserPubKeys {
+	whitelist := make([][33]byte, 0, len(node.AccountManager.UserPubKeys))
+	members := make([]keys.PublicKeyBytes, 0, len(node.AccountManager.UserPubKeys))
+	for k := range node.AccountManager.UserPubKeys {
 		whitelist = append(whitelist, k)
 		members = append(members, k)
 	}

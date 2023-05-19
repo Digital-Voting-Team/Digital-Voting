@@ -1,12 +1,13 @@
 package transaction
 
 import (
-	"digital-voting/identity_provider"
+	"digital-voting/node"
 	"digital-voting/signature/keys"
 )
 
 type TxBody interface {
 	GetSignatureMessage() string
-	Validate(identityProvider *identity_provider.IdentityProvider) bool
-	CheckPublicKeyByRole(identityProvider *identity_provider.IdentityProvider, publicKey keys.PublicKeyBytes) bool
+	CheckOnCreate(node *node.Node, publicKey keys.PublicKeyBytes) bool
+	Verify(node *node.Node, publicKey keys.PublicKeyBytes) bool
+	CheckPublicKeyByRole(node *node.Node, publicKey keys.PublicKeyBytes) bool
 }
