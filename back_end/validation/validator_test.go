@@ -231,3 +231,58 @@ func TestActualizeIdentityProvider(t *testing.T) {
 		})
 	}
 }
+
+func TestVerifyBlock(t *testing.T) {
+	sign := singleSignature.NewECDSA()
+	node := nd.NewNode()
+
+	validatorKeyPair, _ := keys.Random(sign.Curve)
+	node.AccountManager.AddPubKey(validatorKeyPair.PublicToBytes(), ip.Validator)
+
+	validator := &Validator{
+		KeyPair:     validatorKeyPair,
+		Node:        node,
+		BlockSigner: signer.NewBlockSigner(),
+	}
+
+	adminKeyPair, _ := keys.Random(sign.Curve)
+	node.AccountManager.AddPubKey(adminKeyPair.PublicToBytes(), ip.RegistrationAdmin)
+	genesisTransaction1 := tx.NewTransaction(tx.AccountCreation, tx_specific.NewTxAccCreation(account.RegistrationAdmin, adminKeyPair.PublicToBytes()))
+	transactionSigner := signer.NewTransactionSigner()
+	transactionSigner.SignTransaction(adminKeyPair, genesisTransaction1)
+	genesisBlock := blk.NewBlock([]tx.ITransaction{genesisTransaction1}, [32]byte{})
+	fakeBlock := blk.NewBlock([]tx.ITransaction{genesisTransaction1}, [32]byte{})
+
+	validator.SignBlock(genesisBlock)
+
+	type args struct {
+		block *blk.Block
+	}
+	tests := []struct {
+		name     string
+		args     args
+		wantBool bool
+	}{
+		{
+			name: "Verify valid block",
+			args: args{
+				block: fakeBlock,
+			},
+			wantBool: false,
+		},
+		{
+			name: "Verify not valid block",
+			args: args{
+				block: genesisBlock,
+			},
+			wantBool: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := validator.VerifyBlock(tt.args.block); got != tt.wantBool {
+				t.Errorf("VerifyBlock function returned: %v, expected value was: %v", got, tt.wantBool)
+			}
+		})
+	}
+}

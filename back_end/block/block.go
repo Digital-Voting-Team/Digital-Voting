@@ -2,8 +2,8 @@ package block
 
 import (
 	"crypto/sha256"
-	"digital-voting/identity_provider"
 	"digital-voting/merkle_tree"
+	"digital-voting/node"
 	"digital-voting/signature/keys"
 	signature "digital-voting/signature/signatures/single_signature"
 	tx "digital-voting/transaction"
@@ -68,12 +68,17 @@ func (b *Block) GetHashString() string {
 	return base64.URLEncoding.EncodeToString(hash[:])
 }
 
-// TODO : add txs verification
-func (b *Block) Verify(identityProvider *identity_provider.IdentityProvider) bool {
+func (b *Block) Verify(node *node.Node) bool {
 	merkleRoot := merkle_tree.GetMerkleRoot(b.Body.Transactions)
 
-	if !b.Witness.Verify(identityProvider, b.GetHashString()) {
+	if !b.Witness.Verify(node.AccountManager, b.GetHashString()) {
 		return false
+	}
+
+	for _, transaction := range b.Body.Transactions {
+		if !transaction.Verify(node) {
+			return false
+		}
 	}
 
 	return merkleRoot == b.Header.MerkleRoot
