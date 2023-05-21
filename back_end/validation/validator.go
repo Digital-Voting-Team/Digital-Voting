@@ -5,9 +5,11 @@ import (
 	"digital-voting/blockchain"
 	"digital-voting/merkle_tree"
 	"digital-voting/node"
+	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	"digital-voting/signer"
 	tx "digital-voting/transaction"
+	"log"
 	"math"
 	"time"
 )
@@ -20,6 +22,26 @@ type Validator struct {
 	MemPool             []tx.ITransaction
 	Node                *node.Node
 	BlockSigner         *signer.BlockSigner
+	TransactionSigner   *signer.TransactionSigner
+	BlockChannel        chan block.Block
+	TransactionChannel  chan tx.ITransaction
+}
+
+func NewValidator(blockChan chan block.Block, transactionChan chan tx.ITransaction) *Validator {
+	validatorKeys, err := keys.Random(curve.NewCurve25519())
+	if err != nil {
+		log.Fatal(err)
+	}
+	return &Validator{
+		KeyPair:              validatorKeys,
+		ValidatorsPublicKeys: map[keys.PublicKeyBytes]struct{}{},
+		MemPool:              []tx.ITransaction{},
+		Node:                 node.NewNode(),
+		BlockSigner:          signer.NewBlockSigner(),
+		TransactionSigner:    signer.NewTransactionSigner(),
+		BlockChannel:         blockChan,
+		TransactionChannel:   transactionChan,
+	}
 }
 
 func (v *Validator) isInMemPool(transaction tx.ITransaction) bool {
