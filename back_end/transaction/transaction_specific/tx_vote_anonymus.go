@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"time"
 )
 
 type TxVoteAnonymous struct {
@@ -97,14 +98,12 @@ func (tx *TxVoteAnonymous) VerifySignature() bool {
 }
 
 func (tx *TxVoteAnonymous) checkData(node *node.Node) bool {
-	// TODO: think of date validation
-
 	indexedVoting := node.VotingProvider.GetVoting(tx.VotingLink)
 	if indexedVoting.Hash == [32]byte{} {
 		return false
 	}
 
-	if tx.Answer < 0 || tx.Answer >= uint8(len(indexedVoting.Answers)) {
+	if uint32(time.Now().Unix()) > indexedVoting.ExpirationDate || tx.Answer < 0 || tx.Answer >= uint8(len(indexedVoting.Answers)) {
 		return false
 	}
 
