@@ -23,24 +23,65 @@ type Validator struct {
 	Node                *node.Node
 	BlockSigner         *signer.BlockSigner
 	TransactionSigner   *signer.TransactionSigner
-	BlockChannel        chan block.Block
+	BlockChannelIn      <-chan *block.Block
+	BlockChannelOut     chan<- *block.Block
 	TransactionChannel  chan tx.ITransaction
+	Blockchain          *blockchain.Blockchain
 }
 
-func NewValidator(blockChan chan block.Block, transactionChan chan tx.ITransaction) *Validator {
+func NewValidator(blockChanIn <-chan *block.Block, blockChanOut chan<- *block.Block, transactionChan chan tx.ITransaction, bc *blockchain.Blockchain) *Validator {
 	validatorKeys, err := keys.Random(curve.NewCurve25519())
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &Validator{
+	v := &Validator{
 		KeyPair:              validatorKeys,
 		ValidatorsPublicKeys: map[keys.PublicKeyBytes]struct{}{},
 		MemPool:              []tx.ITransaction{},
 		Node:                 node.NewNode(),
 		BlockSigner:          signer.NewBlockSigner(),
 		TransactionSigner:    signer.NewTransactionSigner(),
-		BlockChannel:         blockChan,
+		BlockChannelIn:       blockChanIn,
+		BlockChannelOut:      blockChanOut,
 		TransactionChannel:   transactionChan,
+		Blockchain:           bc,
+	}
+
+	go v.ValidateBlocks()
+	go v.ValidateTransactions()
+	go v.CreateBlockTicker()
+
+	return v
+}
+
+// ValidateBlocks wait for blocks from channel and validate them
+func (v *Validator) ValidateBlocks() {
+	for {
+		v.VerifyBlock(<-v.BlockChannelIn)
+	}
+}
+
+// ValidateTransactions wait for transactions from channel and validate them
+func (v *Validator) ValidateTransactions() {
+	for {
+		v.AddToMemPool(<-v.TransactionChannel)
+	}
+}
+
+// TODO: get last block hash from blockchain
+func (v *Validator) CreateBlockTicker() {
+	ticker := time.NewTicker(time.Hour * 1)
+	for {
+		select {
+		case <-ticker.C:
+			hash := v.Blockchain.GetLastBlockHash()
+			v.BlockChannelOut <- v.CreateBlock(hash)
+		default:
+			hash := v.Blockchain.GetLastBlockHash()
+			if len(v.MemPool) >= 5 {
+				v.BlockChannelOut <- v.CreateBlock(hash)
+			}
+		}
 	}
 }
 
