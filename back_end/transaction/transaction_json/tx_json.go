@@ -32,7 +32,7 @@ type JSONTransaction struct {
 }
 
 func (tx *JSONTransaction) UnmarshallJSON(data []byte) (transaction.ITransaction, error) {
-	temp := make(map[string]interface{})
+	temp := map[string]interface{}{}
 	err := json.Unmarshal(data, &temp)
 	if err != nil {
 		return nil, err
