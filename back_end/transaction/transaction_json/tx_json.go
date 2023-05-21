@@ -85,7 +85,7 @@ func (tx *JSONTransaction) UnmarshallJSON(data []byte) (transaction.ITransaction
 		tx.Answer = uint8(temp["answer"].(float64))
 
 		// Check whether it is new transaction or just for verification
-		if tx.Nonce != 0 {
+		if tx.Nonce == 0 {
 			tx.RingSize = uint8(temp["ring_size"].(float64))
 
 			returnTransaction = transaction_specific.NewTxVoteAnonymous(tx.VotingLink, tx.Answer)
