@@ -74,6 +74,10 @@ func (v *Validator) SignBlock(block *block.Block) {
 	v.BlockSigner.SignBlock(v.KeyPair, block)
 }
 
+func (v *Validator) VerifyBlock(block *block.Block) bool {
+	return block.Verify(v.Node)
+}
+
 func (v *Validator) AddBlockToChain(blockchain *blockchain.Blockchain, block *block.Block) error {
 	return blockchain.AddBlock(block)
 }
