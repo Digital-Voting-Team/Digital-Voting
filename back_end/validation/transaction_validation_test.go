@@ -45,7 +45,7 @@ func TestValidateTransaction(t *testing.T) {
 		MembersPublicKeys: castedTxGrpCreationBody.MembersPublicKeys,
 	})
 
-	expirationDate := time.Now()
+	expirationDate := time.Now().Add(time.Second * 10)
 	votingDescr := "EPS-41 supervisor voting"
 	answers := []string{"Veres M.M.", "Chentsov O.I."}
 	whiteList := [][33]byte{keyPair1.PublicToBytes()}
