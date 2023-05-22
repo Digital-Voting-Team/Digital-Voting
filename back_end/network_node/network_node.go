@@ -2,6 +2,7 @@ package network_node
 
 import (
 	"digital-voting/block"
+	"digital-voting/validation"
 	"encoding/json"
 	"github.com/gorilla/websocket"
 	"log"
@@ -24,17 +25,26 @@ type Message struct {
 
 // network node struct
 type NetworkNode struct {
-	upgrader        websocket.Upgrader
-	BlockChannelIn  <-chan *block.Block
-	BlockChannelOut chan<- *block.Block
+	upgrader             websocket.Upgrader
+	BlockChannelIn       <-chan *block.Block
+	BlockChannelOut      chan<- *block.Block
+	BlockApprovalChannel chan<- *block.Block
+	AcceptanceChannel    <-chan validation.AcceptanceMessage
 }
 
 // constructor for network node
-func NewNetworkNode(blockChanIn <-chan *block.Block, blockChanOut chan<- *block.Block) *NetworkNode {
+func NewNetworkNode(
+	blockChanIn <-chan *block.Block,
+	blockChanOut chan<- *block.Block,
+	blockApprovalChan chan<- *block.Block,
+	acceptanceChan <-chan validation.AcceptanceMessage,
+) *NetworkNode {
 	nn := &NetworkNode{
-		BlockChannelIn:  blockChanIn,
-		BlockChannelOut: blockChanOut,
-		upgrader:        websocket.Upgrader{},
+		BlockChannelIn:       blockChanIn,
+		BlockChannelOut:      blockChanOut,
+		BlockApprovalChannel: blockApprovalChan,
+		AcceptanceChannel:    acceptanceChan,
+		upgrader:             websocket.Upgrader{},
 	}
 
 	http.HandleFunc("/block", nn.HandleWebSocketNewBlock)
@@ -73,13 +83,17 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 				return
 			}
 
-			log.Printf("received message: %+v\n", receivedMessage)
-			log.Printf("received block: %+v\n", receivedBlock)
+			//log.Printf("received message: %+v\n", receivedMessage)
+			//log.Printf("received block: %+v\n", receivedBlock)
 
 			// send block to channel
 			n.BlockChannelOut <- receivedBlock
+			//log.Printf("received: %+v", receivedMessage)
 
-			log.Printf("received: %+v", receivedMessage)
+			acceptanceMessage := <-n.AcceptanceChannel
+			if acceptanceMessage.BlockHash == receivedBlock.GetHash() {
+				log.Println("Successful acceptance")
+			}
 		}
 	}()
 

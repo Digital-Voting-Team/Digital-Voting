@@ -7,6 +7,7 @@ import (
 	"digital-voting/node"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
+	singleSignature "digital-voting/signature/signatures/single_signature"
 	"digital-voting/signer"
 	tx "digital-voting/transaction"
 	"log"
@@ -14,22 +15,37 @@ import (
 	"time"
 )
 
+type AcceptanceMessage struct {
+	BlockHash [32]byte                             `json:"block_hash"`
+	PublicKey keys.PublicKeyBytes                  `json:"public_key"`
+	Signature singleSignature.SingleSignatureBytes `json:"signature"`
+}
+
 type Validator struct {
 	KeyPair              *keys.KeyPair
 	ValidatorsPublicKeys map[keys.PublicKeyBytes]struct{}
 	// TODO: think of data structure to store in future
-	ValidatorsAddresses []any
-	MemPool             []tx.ITransaction
-	Node                *node.Node
-	BlockSigner         *signer.BlockSigner
-	TransactionSigner   *signer.TransactionSigner
-	BlockChannelIn      <-chan *block.Block
-	BlockChannelOut     chan<- *block.Block
-	TransactionChannel  chan tx.ITransaction
-	Blockchain          *blockchain.Blockchain
+	ValidatorsAddresses  []any
+	MemPool              []tx.ITransaction
+	Node                 *node.Node
+	BlockSigner          *signer.BlockSigner
+	TransactionSigner    *signer.TransactionSigner
+	BlockChannelIn       <-chan *block.Block
+	BlockChannelOut      chan<- *block.Block
+	BlockApprovalChannel <-chan *block.Block
+	TransactionChannel   chan tx.ITransaction
+	AcceptanceChannel    chan<- AcceptanceMessage
+	Blockchain           *blockchain.Blockchain
 }
 
-func NewValidator(blockChanIn <-chan *block.Block, blockChanOut chan<- *block.Block, transactionChan chan tx.ITransaction, bc *blockchain.Blockchain) *Validator {
+func NewValidator(
+	blockChanIn <-chan *block.Block,
+	blockChanOut chan<- *block.Block,
+	blockApprovalChan <-chan *block.Block,
+	transactionChan chan tx.ITransaction,
+	acceptanceChan chan<- AcceptanceMessage,
+	bc *blockchain.Blockchain,
+) *Validator {
 	validatorKeys, err := keys.Random(curve.NewCurve25519())
 	if err != nil {
 		log.Fatal(err)
@@ -42,14 +58,17 @@ func NewValidator(blockChanIn <-chan *block.Block, blockChanOut chan<- *block.Bl
 		BlockSigner:          signer.NewBlockSigner(),
 		TransactionSigner:    signer.NewTransactionSigner(),
 		BlockChannelIn:       blockChanIn,
+		BlockApprovalChannel: blockApprovalChan,
 		BlockChannelOut:      blockChanOut,
 		TransactionChannel:   transactionChan,
+		AcceptanceChannel:    acceptanceChan,
 		Blockchain:           bc,
 	}
 
 	go v.ValidateBlocks()
 	go v.ValidateTransactions()
 	go v.CreateBlockTicker()
+	go v.ApproveBlock()
 
 	return v
 }
@@ -57,7 +76,15 @@ func NewValidator(blockChanIn <-chan *block.Block, blockChanOut chan<- *block.Bl
 // ValidateBlocks wait for blocks from channel and validate them
 func (v *Validator) ValidateBlocks() {
 	for {
-		v.VerifyBlock(<-v.BlockChannelIn)
+		newBlock := <-v.BlockChannelIn
+		if v.VerifyBlock(newBlock) {
+			publicKey, signature := v.SignBlock(newBlock)
+			v.AcceptanceChannel <- AcceptanceMessage{
+				BlockHash: newBlock.GetHash(),
+				PublicKey: publicKey,
+				Signature: signature,
+			}
+		}
 	}
 }
 
@@ -65,6 +92,19 @@ func (v *Validator) ValidateBlocks() {
 func (v *Validator) ValidateTransactions() {
 	for {
 		v.AddToMemPool(<-v.TransactionChannel)
+	}
+}
+
+// ApproveBlock wait for transactions from channel, approve and add them to blockchain
+func (v *Validator) ApproveBlock() {
+	for {
+		newBlock := <-v.BlockApprovalChannel
+		if v.VerifyBlock(newBlock) {
+			err := v.AddBlockToChain(newBlock)
+			if err != nil {
+				log.Fatalln(err)
+			}
+		}
 	}
 }
 
@@ -133,16 +173,20 @@ func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
 	return newBlock
 }
 
-func (v *Validator) SignBlock(block *block.Block) {
-	v.BlockSigner.SignBlock(v.KeyPair, block)
+func (v *Validator) SignAndUpdateBlock(block *block.Block) {
+	v.BlockSigner.SignAndUpdateBlock(v.KeyPair, block)
+}
+
+func (v *Validator) SignBlock(block *block.Block) (keys.PublicKeyBytes, singleSignature.SingleSignatureBytes) {
+	return v.BlockSigner.SignBlock(v.KeyPair, block)
 }
 
 func (v *Validator) VerifyBlock(block *block.Block) bool {
 	return block.Verify(v.Node)
 }
 
-func (v *Validator) AddBlockToChain(blockchain *blockchain.Blockchain, block *block.Block) error {
-	return blockchain.AddBlock(block)
+func (v *Validator) AddBlockToChain(block *block.Block) error {
+	return v.Blockchain.AddBlock(block)
 }
 
 type IdentityActualizer interface {

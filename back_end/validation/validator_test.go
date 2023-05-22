@@ -125,7 +125,7 @@ func TestCreateBlock(t *testing.T) {
 		Header: blockHeader,
 		Body:   blockBody,
 	}
-	validator.SignBlock(testBlock)
+	validator.SignAndUpdateBlock(testBlock)
 
 	type args struct {
 		previousBlockHash [32]byte
@@ -253,7 +253,7 @@ func TestVerifyBlock(t *testing.T) {
 	genesisBlock := blk.NewBlock([]tx.ITransaction{genesisTransaction1}, [32]byte{})
 	fakeBlock := blk.NewBlock([]tx.ITransaction{genesisTransaction1}, [32]byte{})
 
-	validator.SignBlock(genesisBlock)
+	validator.SignAndUpdateBlock(genesisBlock)
 
 	type args struct {
 		block *blk.Block
