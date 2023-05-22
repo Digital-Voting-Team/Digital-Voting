@@ -2,7 +2,6 @@ package network_node
 
 import (
 	"digital-voting/block"
-	"digital-voting/transaction/transaction_json"
 	"encoding/json"
 	"github.com/gorilla/websocket"
 	"log"
@@ -68,21 +67,12 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 				continue
 			}
 
-			receivedBlock := &block.Block{}
-
-			_ = json.Unmarshal(message, &receivedBlock)
-			receivedBlock.Body.Transactions = nil
-
-			for _, tx := range receivedMessage["body"].(map[string]any)["transactions"].([]any) {
-				transaction := &transaction_json.JSONTransaction{}
-				marshall, err := json.Marshal(tx)
-
-				iTransaction, err := transaction.UnmarshallJSON(marshall)
-				if err != nil {
-					return
-				}
-				receivedBlock.Body.AddTransaction(iTransaction)
+			receivedBlock, err := block.UnmarshallBlock(message)
+			if err != nil {
+				log.Println("block unmarshal:", err)
+				return
 			}
+
 			log.Printf("received message: %+v\n", receivedMessage)
 			log.Printf("received block: %+v\n", receivedBlock)
 
