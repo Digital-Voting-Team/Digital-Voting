@@ -4,6 +4,7 @@ import (
 	"digital-voting/block"
 	"digital-voting/validation"
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -29,7 +30,8 @@ type NetworkNode struct {
 	BlockChannelIn       <-chan *block.Block
 	BlockChannelOut      chan<- *block.Block
 	BlockApprovalChannel chan<- *block.Block
-	AcceptanceChannel    <-chan validation.AcceptanceMessage
+	ResponseChannel      <-chan validation.ResponseMessage
+	NodeList             []string
 }
 
 // constructor for network node
@@ -37,13 +39,13 @@ func NewNetworkNode(
 	blockChanIn <-chan *block.Block,
 	blockChanOut chan<- *block.Block,
 	blockApprovalChan chan<- *block.Block,
-	acceptanceChan <-chan validation.AcceptanceMessage,
+	responseChan <-chan validation.ResponseMessage,
 ) *NetworkNode {
 	nn := &NetworkNode{
 		BlockChannelIn:       blockChanIn,
 		BlockChannelOut:      blockChanOut,
 		BlockApprovalChannel: blockApprovalChan,
-		AcceptanceChannel:    acceptanceChan,
+		ResponseChannel:      responseChan,
 		upgrader:             websocket.Upgrader{},
 	}
 
@@ -58,46 +60,42 @@ func (n *NetworkNode) Start(port string) {
 }
 
 func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
-	done := make(chan struct{})
-
-	// Start a goroutine to read messages from the WebSocket connection
-	go func() {
-		defer close(done)
-		for {
-			_, message, err := conn.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
-				return
-			}
-
-			var receivedMessage map[string]any
-			err = json.Unmarshal(message, &receivedMessage)
-			if err != nil {
-				log.Println("json unmarshal:", err)
-				continue
-			}
-
-			receivedBlock, err := block.UnmarshallBlock(message)
-			if err != nil {
-				log.Println("block unmarshal:", err)
-				return
-			}
-
-			//log.Printf("received message: %+v\n", receivedMessage)
-			//log.Printf("received block: %+v\n", receivedBlock)
-
-			// send block to channel
-			n.BlockChannelOut <- receivedBlock
-			//log.Printf("received: %+v", receivedMessage)
-
-			acceptanceMessage := <-n.AcceptanceChannel
-			if acceptanceMessage.BlockHash == receivedBlock.GetHash() {
-				log.Println("Successful acceptance")
-			}
+	for {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("read:", err)
+			return
 		}
-	}()
 
-	<-done
+		var receivedMessage map[string]any
+		err = json.Unmarshal(message, &receivedMessage)
+		if err != nil {
+			log.Println("json unmarshal:", err)
+			continue
+		}
+
+		marshalledBlock, _ := json.Marshal(receivedMessage["block"])
+		receivedBlock, err := block.UnmarshallBlock(marshalledBlock)
+		if err != nil {
+			log.Println("block unmarshal:", err)
+			return
+		}
+
+		//log.Printf("received message: %+v\n", receivedMessage)
+		//log.Printf("received block: %+v\n", receivedBlock)
+
+		// send block to channel
+		n.BlockChannelOut <- receivedBlock
+		responseMessage := <-n.ResponseChannel
+
+		log.Println(responseMessage.VerificationSuccess)
+		log.Println(receivedMessage["sender"])
+
+		err = conn.WriteJSON(responseMessage)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
 }
 
 func (n *NetworkNode) SendBlock(conn *websocket.Conn, msgType MsgType) {
@@ -113,7 +111,7 @@ func (n *NetworkNode) SendBlock(conn *websocket.Conn, msgType MsgType) {
 	}
 
 	// Send the JSON message
-	err = conn.WriteMessage(websocket.TextMessage, jsonMessage)
+	err = conn.WriteJSON(jsonMessage)
 	if err != nil {
 		log.Println("write:", err)
 		return

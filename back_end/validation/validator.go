@@ -15,10 +15,11 @@ import (
 	"time"
 )
 
-type AcceptanceMessage struct {
-	BlockHash [32]byte                             `json:"block_hash"`
-	PublicKey keys.PublicKeyBytes                  `json:"public_key"`
-	Signature singleSignature.SingleSignatureBytes `json:"signature"`
+type ResponseMessage struct {
+	VerificationSuccess bool                                 `json:"verification_success"`
+	BlockHash           [32]byte                             `json:"block_hash"`
+	PublicKey           keys.PublicKeyBytes                  `json:"public_key"`
+	Signature           singleSignature.SingleSignatureBytes `json:"signature"`
 }
 
 type Validator struct {
@@ -34,7 +35,7 @@ type Validator struct {
 	BlockChannelOut      chan<- *block.Block
 	BlockApprovalChannel <-chan *block.Block
 	TransactionChannel   chan tx.ITransaction
-	AcceptanceChannel    chan<- AcceptanceMessage
+	ResponseChannel      chan<- ResponseMessage
 	Blockchain           *blockchain.Blockchain
 }
 
@@ -43,7 +44,7 @@ func NewValidator(
 	blockChanOut chan<- *block.Block,
 	blockApprovalChan <-chan *block.Block,
 	transactionChan chan tx.ITransaction,
-	acceptanceChan chan<- AcceptanceMessage,
+	responseChan chan<- ResponseMessage,
 	bc *blockchain.Blockchain,
 ) *Validator {
 	validatorKeys, err := keys.Random(curve.NewCurve25519())
@@ -61,7 +62,7 @@ func NewValidator(
 		BlockApprovalChannel: blockApprovalChan,
 		BlockChannelOut:      blockChanOut,
 		TransactionChannel:   transactionChan,
-		AcceptanceChannel:    acceptanceChan,
+		ResponseChannel:      responseChan,
 		Blockchain:           bc,
 	}
 
@@ -75,16 +76,24 @@ func NewValidator(
 
 // ValidateBlocks wait for blocks from channel and validate them
 func (v *Validator) ValidateBlocks() {
+	var response ResponseMessage
 	for {
 		newBlock := <-v.BlockChannelIn
 		if v.VerifyBlock(newBlock) {
 			publicKey, signature := v.SignBlock(newBlock)
-			v.AcceptanceChannel <- AcceptanceMessage{
-				BlockHash: newBlock.GetHash(),
-				PublicKey: publicKey,
-				Signature: signature,
+			response = ResponseMessage{
+				VerificationSuccess: true,
+				BlockHash:           newBlock.GetHash(),
+				PublicKey:           publicKey,
+				Signature:           signature,
+			}
+		} else {
+			response = ResponseMessage{
+				VerificationSuccess: false,
+				BlockHash:           newBlock.GetHash(),
 			}
 		}
+		v.ResponseChannel <- response
 	}
 }
 
