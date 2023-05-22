@@ -3,6 +3,7 @@ package transaction_json
 import (
 	"digital-voting/account"
 	"digital-voting/signature/keys"
+	ringSignature "digital-voting/signature/signatures/ring_signature"
 	ss "digital-voting/signature/signatures/single_signature"
 	"digital-voting/transaction"
 	"digital-voting/transaction/transaction_specific"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestUnmarshallJSON(t *testing.T) {
-	marshalledTransaction := []byte(
+	marshalledTxAccCreation := []byte(
 		`{
 			"tx_type": 0,
 			"tx_body": {
@@ -26,10 +27,11 @@ func TestUnmarshallJSON(t *testing.T) {
 			],
 			"public_key": [
 				65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97
-			]
+			],
+			"private_key": [1, 2, 3]
 		  }`)
 
-	wantTransaction := &transaction.Transaction{
+	wantTxAccCreation := &transaction.Transaction{
 		TxType: transaction.AccountCreation,
 		TxBody: &transaction_specific.TxAccountCreation{
 			AccountType:  account.User,
@@ -38,6 +40,32 @@ func TestUnmarshallJSON(t *testing.T) {
 		Nonce:     1,
 		Signature: ss.SingleSignatureBytes{131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194},
 		PublicKey: keys.PublicKeyBytes{65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97},
+	}
+
+	marshalledTxVoteAnonymous := []byte(
+		`{
+			"tx_type": 4,
+			"voting_link": [1, 2, 3],
+			"answer": 1,
+			"nonce": 1,
+			"ring_signature": [
+				[1, 2, 3]
+			],
+			"key_image": [1, 2, 3],
+			"public_keys": [
+				[1, 2, 3]
+			],
+			"private_key": [1, 2, 3]
+		  }`)
+
+	wantTxVoteAnonymous := &transaction_specific.TxVoteAnonymous{
+		TxType:        transaction.VoteAnonymous,
+		VotingLink:    [32]byte{1, 2, 3},
+		Answer:        1,
+		Nonce:         1,
+		RingSignature: ringSignature.RingSignatureBytes{{1, 2, 3}},
+		KeyImage:      ringSignature.KeyImageBytes{1, 2, 3},
+		PublicKeys:    []keys.PublicKeyBytes{{1, 2, 3}},
 	}
 
 	type args struct {
@@ -52,9 +80,17 @@ func TestUnmarshallJSON(t *testing.T) {
 		{
 			name: "Unmarshall transaction account creation",
 			args: args{
-				data: marshalledTransaction,
+				data: marshalledTxAccCreation,
 			},
-			want:    wantTransaction,
+			want:    wantTxAccCreation,
+			wantErr: false,
+		},
+		{
+			name: "Unmarshall new transaction account creation",
+			args: args{
+				data: marshalledTxVoteAnonymous,
+			},
+			want:    wantTxVoteAnonymous,
 			wantErr: false,
 		},
 	}

@@ -96,23 +96,9 @@ func UnmarshallBlock(marshalledBlock []byte) (*Block, error) {
 
 	// Block header and witness are unmarshalled automatically
 	unmarshalledBlock := &Block{}
-	blockHeader, err := json.Marshal(temp["header"])
-	if err != nil {
-		return nil, err
-	}
-	blockWitness, err := json.Marshal(temp["witness"])
-	if err != nil {
-		return nil, err
-	}
-
-	err = json.Unmarshal(blockHeader, &unmarshalledBlock.Header)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(blockWitness, &unmarshalledBlock.Witness)
-	if err != nil {
-		return nil, err
-	}
+	// Header and Witness are unmarshalled automatically, Body isn't
+	_ = json.Unmarshal(marshalledBlock, unmarshalledBlock)
+	unmarshalledBlock.Body.Transactions = nil
 
 	// Transactions are unmarshalled through iterative process
 	for _, transactions := range temp["body"].(map[string]any)["transactions"].([]any) {

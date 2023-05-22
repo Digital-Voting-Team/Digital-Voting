@@ -18,6 +18,7 @@ type JSONTransaction struct {
 	Answer     uint8              `json:"answer,omitempty"`
 	RingSize   uint8              `json:"ring_size,omitempty"`
 
+	// TODO: consider not sending PrivateKey and moving signing to the client for security reasons
 	PrivateKey keys.PrivateKeyBytes `json:"private_key,omitempty"`
 
 	Data  []byte `json:"data,omitempty"`
@@ -42,37 +43,10 @@ func (tx *JSONTransaction) UnmarshallJSON(marshalledTransaction []byte) (transac
 	if err != nil {
 		return nil, err
 	}
-
-	// TxType is available in all transactions
-	tx.TxType = transaction.TxType(uint8(temp["tx_type"].(float64)))
-
-	// PrivateKey is available for further signing if it is a new transaction
-	// TODO: consider moving signing to the client for security reasons
-	val, ok := temp["private_key"]
-	if ok {
-		marshal, _ := json.Marshal(val)
-		err = json.Unmarshal(marshal, &tx.PrivateKey)
-		if err != nil {
-			return nil, err
-		}
-	}
+	_ = json.Unmarshal(marshalledTransaction, tx)
 
 	// Nonce is available only if it is already created and marshalled transaction
-	val, ok = temp["nonce"]
-	newTxFlag := !ok
-	if ok {
-		tx.Nonce = uint32(val.(float64))
-	}
-
-	// Data field is yet unused but can be filled with data
-	val, ok = temp["data"]
-	if ok {
-		marshal, _ := json.Marshal(val)
-		err = json.Unmarshal(marshal, &tx.Data)
-		if err != nil {
-			return nil, err
-		}
-	}
+	newTxFlag := tx.Nonce == 0
 
 	var txBody transaction.TxBody
 
@@ -89,42 +63,13 @@ func (tx *JSONTransaction) UnmarshallJSON(marshalledTransaction []byte) (transac
 	case transaction.VoteAnonymous:
 		// VoteAnonymous case is specific since this transaction is not usual and uses a different signature
 		var returnTransaction *transaction_specific.TxVoteAnonymous
-
-		// Voting link and answer are the fields necessary to construct VoteAnonymous transaction
-		marshal, _ := json.Marshal(temp["voting_link"])
-		err = json.Unmarshal(marshal, &tx.VotingLink)
-		if err != nil {
-			return nil, err
-		}
-		tx.Answer = uint8(temp["answer"].(float64))
-
 		// Check whether it is new transaction or just for verification
 		if newTxFlag {
-			tx.RingSize = uint8(temp["ring_size"].(float64))
-
 			returnTransaction = transaction_specific.NewTxVoteAnonymous(tx.VotingLink, tx.Answer)
 		} else {
-			// Read all necessary fields for already created and signed VoteAnonymous transaction
-			marshal, _ = json.Marshal(temp["ring_signature"])
-			err = json.Unmarshal(marshal, &tx.RingSignature)
-			if err != nil {
-				return nil, err
-			}
-
-			marshal, _ = json.Marshal(temp["key_image"])
-			err = json.Unmarshal(marshal, &tx.KeyImage)
-			if err != nil {
-				return nil, err
-			}
-
-			marshal, _ = json.Marshal(temp["public_keys"])
-			err = json.Unmarshal(marshal, &tx.PublicKeys)
-			if err != nil {
-				return nil, err
-			}
-
 			returnTransaction = &transaction_specific.TxVoteAnonymous{
 				TxType:        tx.TxType,
+				VotingLink:    tx.VotingLink,
 				Answer:        tx.Answer,
 				Nonce:         tx.Nonce,
 				RingSignature: tx.RingSignature,
@@ -157,19 +102,6 @@ func (tx *JSONTransaction) UnmarshallJSON(marshalledTransaction []byte) (transac
 	if newTxFlag {
 		returnTransaction = transaction.NewTransaction(tx.TxType, tx.TxBody)
 	} else {
-		// Read all necessary fields for already created and signed Transaction
-		marshal, _ = json.Marshal(temp["signature"])
-		err = json.Unmarshal(marshal, &tx.Signature)
-		if err != nil {
-			return nil, err
-		}
-
-		marshal, _ = json.Marshal(temp["public_key"])
-		err = json.Unmarshal(marshal, &tx.PublicKey)
-		if err != nil {
-			return nil, err
-		}
-
 		returnTransaction = &transaction.Transaction{
 			TxType:    tx.TxType,
 			TxBody:    tx.TxBody,
