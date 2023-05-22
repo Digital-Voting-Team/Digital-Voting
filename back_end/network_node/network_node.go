@@ -51,6 +51,12 @@ func NewNetworkNode(
 
 	http.HandleFunc("/block", nn.HandleWebSocketNewBlock)
 
+	go func() {
+		for {
+			nn.SendBlockValidation()
+		}
+	}()
+
 	return nn
 }
 
@@ -98,13 +104,8 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 	}
 }
 
-func (n *NetworkNode) SendBlock(conn *websocket.Conn, msgType MsgType) {
-	// Marshal the JSON message
-	msg := Message{
-		MessageType: msgType,
-		Block:       *<-n.BlockChannelIn,
-	}
-	jsonMessage, err := json.Marshal(msg)
+func (n *NetworkNode) SendBlock(conn *websocket.Conn, message Message) {
+	jsonMessage, err := json.Marshal(message)
 	if err != nil {
 		log.Println("json marshal:", err)
 		return
@@ -115,6 +116,32 @@ func (n *NetworkNode) SendBlock(conn *websocket.Conn, msgType MsgType) {
 	if err != nil {
 		log.Println("write:", err)
 		return
+	}
+}
+
+// SendBlockValidation send block to all nodes in network
+func (n *NetworkNode) SendBlockValidation() {
+	message := Message{
+		MessageType: BlockValidation,
+		Block:       *<-n.BlockChannelIn,
+	}
+
+	// TODO: update node list
+
+	for _, node := range n.NodeList {
+		conn, err := n.Connect(node, "8080")
+		if err != nil {
+			log.Println("connect:", err)
+			continue
+		}
+		defer func(conn *websocket.Conn) {
+			err = conn.Close()
+			if err != nil {
+				log.Println("Error closing connection:", err)
+			}
+		}(conn)
+
+		n.SendBlock(conn, message)
 	}
 }
 
