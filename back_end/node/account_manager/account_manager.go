@@ -1,6 +1,8 @@
 package account_manager
 
-import "digital-voting/signature/keys"
+import (
+	"digital-voting/signature/keys"
+)
 
 type AccountManager struct {
 	UserPubKeys               map[keys.PublicKeyBytes]struct{}

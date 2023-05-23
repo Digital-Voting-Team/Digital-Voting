@@ -195,7 +195,7 @@ func TestActualizeIdentityProvider(t *testing.T) {
 
 	block := validator.CreateBlock([32]byte{})
 
-	validator.ActualizeIdentityProvider(block)
+	validator.ActualizeNodeData(block)
 
 	type args struct {
 		publicKey keys.PublicKeyBytes

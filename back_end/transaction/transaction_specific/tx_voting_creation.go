@@ -92,7 +92,7 @@ func (tx *TxVotingCreation) Verify(node *node.Node, publicKey keys.PublicKeyByte
 	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
 }
 
-func (tx *TxVotingCreation) ActualizeIdentities(node *node.Node) {
+func (tx *TxVotingCreation) ActualizeIndexedData(node *node.Node) {
 	node.VotingProvider.AddNewVoting(indexed_data.VotingDTO{
 		Hash:              tx.GetHash(),
 		ExpirationDate:    tx.ExpirationDate,

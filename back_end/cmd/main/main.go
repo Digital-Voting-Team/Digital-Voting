@@ -72,7 +72,7 @@ func main() {
 
 	block1 := validator.CreateBlock(genesisBlock.GetHash())
 	validator.AddBlockToChain(block1)
-	validator.ActualizeIdentityProvider(block1)
+	validator.ActualizeNodeData(block1)
 
 	// Add second block with voting and group
 	whitelist := make([][33]byte, 0, len(node.AccountManager.UserPubKeys))
@@ -96,7 +96,7 @@ func main() {
 
 	block2 := validator.CreateBlock(block1.GetHash())
 	validator.AddBlockToChain(block2)
-	validator.ActualizeIdentityProvider(block2)
+	validator.ActualizeNodeData(block2)
 
 	// Add third block with votings
 	txVote1 := tx.NewTransaction(tx.Vote, stx.NewTxVote(txVoting.GetHash(), 1))
@@ -118,7 +118,7 @@ func main() {
 	if err != nil {
 		log.Panicln(err)
 	}
-	validator.ActualizeIdentityProvider(block3)
+	validator.ActualizeNodeData(block3)
 
 	// Print blockchain
 	for _, b := range currentBlockchain.Blocks {

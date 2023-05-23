@@ -5,6 +5,7 @@ import (
 	"digital-voting/blockchain"
 	"digital-voting/merkle_tree"
 	"digital-voting/node"
+	"digital-voting/node/account_manager"
 	"digital-voting/signature/curve"
 	"digital-voting/signature/keys"
 	singleSignature "digital-voting/signature/signatures/single_signature"
@@ -15,37 +16,40 @@ import (
 	"time"
 )
 
+const MaxTransactionsInBlock = 5
+
 type ResponseMessage struct {
 	VerificationSuccess bool                                 `json:"verification_success"`
-	BlockHash           [32]byte                             `json:"block_hash"`
 	PublicKey           keys.PublicKeyBytes                  `json:"public_key"`
 	Signature           singleSignature.SingleSignatureBytes `json:"signature"`
 }
 
 type Validator struct {
-	KeyPair              *keys.KeyPair
-	ValidatorsPublicKeys map[keys.PublicKeyBytes]struct{}
-	// TODO: think of data structure to store in future
-	ValidatorsAddresses  []any
-	MemPool              []tx.ITransaction
-	Node                 *node.Node
-	BlockSigner          *signer.BlockSigner
-	TransactionSigner    *signer.TransactionSigner
-	BlockChannelIn       <-chan *block.Block
-	BlockChannelOut      chan<- *block.Block
+	KeyPair           *keys.KeyPair
+	MemPool           []tx.ITransaction
+	Node              *node.Node
+	BlockSigner       *signer.BlockSigner
+	TransactionSigner *signer.TransactionSigner
+	Blockchain        *blockchain.Blockchain
+
+	NetworkToValidator   <-chan *block.Block
+	ValidatorToNetwork   chan<- *block.Block
 	BlockApprovalChannel <-chan *block.Block
+	BlockDenialChannel   <-chan *block.Block
 	TransactionChannel   chan tx.ITransaction
 	ResponseChannel      chan<- ResponseMessage
-	Blockchain           *blockchain.Blockchain
+	ValidatorKeysChannel <-chan []keys.PublicKeyBytes
 }
 
 func NewValidator(
-	blockChanIn <-chan *block.Block,
-	blockChanOut chan<- *block.Block,
+	bc *blockchain.Blockchain,
+	netToValChan <-chan *block.Block,
+	valToNetChan chan<- *block.Block,
 	blockApprovalChan <-chan *block.Block,
+	blockDenialChan <-chan *block.Block,
 	transactionChan chan tx.ITransaction,
 	responseChan chan<- ResponseMessage,
-	bc *blockchain.Blockchain,
+	validatorKeysChan <-chan []keys.PublicKeyBytes,
 ) *Validator {
 	validatorKeys, err := keys.Random(curve.NewCurve25519())
 	if err != nil {
@@ -53,44 +57,49 @@ func NewValidator(
 	}
 	v := &Validator{
 		KeyPair:              validatorKeys,
-		ValidatorsPublicKeys: map[keys.PublicKeyBytes]struct{}{},
 		MemPool:              []tx.ITransaction{},
 		Node:                 node.NewNode(),
 		BlockSigner:          signer.NewBlockSigner(),
 		TransactionSigner:    signer.NewTransactionSigner(),
-		BlockChannelIn:       blockChanIn,
+		Blockchain:           bc,
+		NetworkToValidator:   netToValChan,
+		ValidatorToNetwork:   valToNetChan,
 		BlockApprovalChannel: blockApprovalChan,
-		BlockChannelOut:      blockChanOut,
+		BlockDenialChannel:   blockDenialChan,
 		TransactionChannel:   transactionChan,
 		ResponseChannel:      responseChan,
-		Blockchain:           bc,
+		ValidatorKeysChannel: validatorKeysChan,
 	}
 
-	go v.ValidateBlocks()
-	go v.ValidateTransactions()
-	go v.CreateBlockTicker()
-	go v.ApproveBlock()
+	v.StartRoutines()
 
 	return v
+}
+
+func (v *Validator) StartRoutines() {
+	go v.ValidateBlocks()
+	go v.ValidateTransactions()
+	go v.CreateAndSendBlock()
+	go v.ApproveBlock()
+	go v.DenyBlock()
+	go v.UpdateValidatorKeys()
 }
 
 // ValidateBlocks wait for blocks from channel and validate them
 func (v *Validator) ValidateBlocks() {
 	var response ResponseMessage
 	for {
-		newBlock := <-v.BlockChannelIn
+		newBlock := <-v.NetworkToValidator
 		if v.VerifyBlock(newBlock) {
 			publicKey, signature := v.SignBlock(newBlock)
 			response = ResponseMessage{
 				VerificationSuccess: true,
-				BlockHash:           newBlock.GetHash(),
 				PublicKey:           publicKey,
 				Signature:           signature,
 			}
 		} else {
 			response = ResponseMessage{
 				VerificationSuccess: false,
-				BlockHash:           newBlock.GetHash(),
 			}
 		}
 		v.ResponseChannel <- response
@@ -107,9 +116,10 @@ func (v *Validator) ValidateTransactions() {
 // ApproveBlock wait for transactions from channel, approve and add them to blockchain
 func (v *Validator) ApproveBlock() {
 	for {
-		newBlock := <-v.BlockApprovalChannel
-		if v.VerifyBlock(newBlock) {
-			err := v.AddBlockToChain(newBlock)
+		approvedBlock := <-v.BlockApprovalChannel
+		if v.VerifyBlock(approvedBlock) {
+			err := v.AddBlockToChain(approvedBlock)
+			v.ActualizeNodeData(approvedBlock)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -117,18 +127,32 @@ func (v *Validator) ApproveBlock() {
 	}
 }
 
+// DenyBlock wait for transactions from channel, restore transactions from it
+func (v *Validator) DenyBlock() {
+	for {
+		deniedBlock := <-v.BlockDenialChannel
+		for _, transaction := range deniedBlock.Body.Transactions {
+			if transaction.Verify(v.Node) {
+				v.MemPool = append([]tx.ITransaction{transaction}, v.MemPool...)
+			}
+		}
+	}
+}
+
 // TODO: get last block hash from blockchain
-func (v *Validator) CreateBlockTicker() {
+func (v *Validator) CreateAndSendBlock() {
 	ticker := time.NewTicker(time.Hour * 1)
 	for {
 		select {
 		case <-ticker.C:
 			hash := v.Blockchain.GetLastBlockHash()
-			v.BlockChannelOut <- v.CreateBlock(hash)
+			if len(v.MemPool) > 0 {
+				v.ValidatorToNetwork <- v.CreateBlock(hash)
+			}
 		default:
 			hash := v.Blockchain.GetLastBlockHash()
-			if len(v.MemPool) >= 5 {
-				v.BlockChannelOut <- v.CreateBlock(hash)
+			if len(v.MemPool) >= MaxTransactionsInBlock {
+				v.ValidatorToNetwork <- v.CreateBlock(hash)
 			}
 		}
 	}
@@ -153,8 +177,8 @@ func (v *Validator) AddToMemPool(newTransaction tx.ITransaction) {
 func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
 	// Validator does not validate its block since it validated all transactions while adding them to MemPool
 
-	// Takes up to 20 transactions from beginning of MemPool and create block body with them
-	maxNumber := 20
+	// Takes up to MAX_TRANSACTIONS_IN_BLOCK transactions from beginning of MemPool and create block body with them
+	maxNumber := MaxTransactionsInBlock
 	numberInBlock := int(math.Min(float64(len(v.MemPool)), float64(maxNumber)))
 	blockBody := block.Body{
 		Transactions: v.MemPool[:numberInBlock],
@@ -191,22 +215,39 @@ func (v *Validator) SignBlock(block *block.Block) (keys.PublicKeyBytes, singleSi
 }
 
 func (v *Validator) VerifyBlock(block *block.Block) bool {
-	return block.Verify(v.Node)
+	v.Node.Mutex.Lock()
+	verificationStatus := block.Verify(v.Node)
+	v.Node.Mutex.Unlock()
+	return verificationStatus
 }
 
 func (v *Validator) AddBlockToChain(block *block.Block) error {
 	return v.Blockchain.AddBlock(block)
 }
 
-type IdentityActualizer interface {
-	ActualizeIdentities(node *node.Node)
+type IndexedDataActualizer interface {
+	ActualizeIndexedData(node *node.Node)
 }
 
-func (v *Validator) ActualizeIdentityProvider(block *block.Block) {
+func (v *Validator) ActualizeNodeData(block *block.Block) {
+	v.Node.Mutex.Lock()
 	for _, transaction := range block.Body.Transactions {
-		txExact, ok := transaction.GetTxBody().(IdentityActualizer)
+		txExact, ok := transaction.GetTxBody().(IndexedDataActualizer)
 		if ok {
-			txExact.ActualizeIdentities(v.Node)
+			txExact.ActualizeIndexedData(v.Node)
 		}
+	}
+	v.Node.Mutex.Unlock()
+}
+
+func (v *Validator) UpdateValidatorKeys() {
+	for {
+		newValidatorKeys := <-v.ValidatorKeysChannel
+		v.Node.Mutex.Lock()
+		v.Node.AccountManager.ValidatorPubKeys = map[keys.PublicKeyBytes]struct{}{}
+		for _, key := range newValidatorKeys {
+			v.Node.AccountManager.AddPubKey(key, account_manager.Validator)
+		}
+		v.Node.Mutex.Unlock()
 	}
 }

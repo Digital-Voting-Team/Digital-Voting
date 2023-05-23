@@ -2,6 +2,8 @@ package network_node
 
 import (
 	"digital-voting/block"
+	"digital-voting/signature/keys"
+	signature "digital-voting/signature/signatures/single_signature"
 	"digital-voting/validation"
 	"encoding/json"
 	"fmt"
@@ -9,9 +11,14 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 )
 
+const Threshold = 0.75
+
 type MsgType uint8
+
+const ResponseTime = 5
 
 const (
 	BlockValidation MsgType = iota
@@ -27,29 +34,36 @@ type Message struct {
 // network node struct
 type NetworkNode struct {
 	upgrader             websocket.Upgrader
-	BlockChannelIn       <-chan *block.Block
-	BlockChannelOut      chan<- *block.Block
+	ValidatorToNetwork   <-chan *block.Block
+	NetworkToValidator   chan<- *block.Block
 	BlockApprovalChannel chan<- *block.Block
+	BlockDenialChannel   chan<- *block.Block
 	ResponseChannel      <-chan validation.ResponseMessage
-	NodeList             []string
+	ValidatorKeysChannel chan<- []keys.PublicKeyBytes
+
+	NodeList []string
 }
 
 // constructor for network node
 func NewNetworkNode(
-	blockChanIn <-chan *block.Block,
-	blockChanOut chan<- *block.Block,
+	valToNetChan <-chan *block.Block,
+	netToValChan chan<- *block.Block,
 	blockApprovalChan chan<- *block.Block,
 	responseChan <-chan validation.ResponseMessage,
+	validatorKeysChan chan<- []keys.PublicKeyBytes,
+	validatorPublicKey keys.PublicKeyBytes,
 ) *NetworkNode {
 	nn := &NetworkNode{
-		BlockChannelIn:       blockChanIn,
-		BlockChannelOut:      blockChanOut,
+		ValidatorToNetwork:   valToNetChan,
+		NetworkToValidator:   netToValChan,
 		BlockApprovalChannel: blockApprovalChan,
 		ResponseChannel:      responseChan,
+		ValidatorKeysChannel: validatorKeysChan,
 		upgrader:             websocket.Upgrader{},
 	}
 
 	http.HandleFunc("/block", nn.HandleWebSocketNewBlock)
+	http.HandleFunc("/update", nn.HandleWebSocketUpdateNodeList)
 
 	go func() {
 		for {
@@ -66,41 +80,46 @@ func (n *NetworkNode) Start(port string) {
 }
 
 func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
-	for {
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("read:", err)
-			return
-		}
+	_, message, err := conn.ReadMessage()
+	if err != nil {
+		log.Println("read:", err)
+		return
+	}
 
-		var receivedMessage map[string]any
-		err = json.Unmarshal(message, &receivedMessage)
-		if err != nil {
-			log.Println("json unmarshal:", err)
-			continue
-		}
+	var messageMap map[string]any
+	err = json.Unmarshal(message, &messageMap)
+	if err != nil {
+		log.Println("json unmarshal:", err)
+		return
+	}
 
-		marshalledBlock, _ := json.Marshal(receivedMessage["block"])
-		receivedBlock, err := block.UnmarshallBlock(marshalledBlock)
-		if err != nil {
-			log.Println("block unmarshal:", err)
-			return
-		}
+	receivedMessage := &Message{}
+	_ = json.Unmarshal(message, receivedMessage)
 
-		//log.Printf("received message: %+v\n", receivedMessage)
-		//log.Printf("received block: %+v\n", receivedBlock)
+	marshalledBlock, _ := json.Marshal(messageMap["block"])
+	receivedBlock, err := block.UnmarshallBlock(marshalledBlock)
+	if err != nil {
+		log.Println("block unmarshal:", err)
+		return
+	}
 
-		// send block to channel
-		n.BlockChannelOut <- receivedBlock
+	switch receivedMessage.MessageType {
+	case BlockValidation:
+		n.NetworkToValidator <- receivedBlock
 		responseMessage := <-n.ResponseChannel
 
-		log.Println(responseMessage.VerificationSuccess)
-		log.Println(receivedMessage["sender"])
+		//log.Println(responseMessage.VerificationSuccess)
 
 		err = conn.WriteJSON(responseMessage)
 		if err != nil {
 			fmt.Println(err)
 		}
+	case BlockApproval:
+		// TODO: consider denial and actions to restore correct state
+		n.BlockApprovalChannel <- receivedBlock
+	default:
+		log.Printf("unknown message type %d", receivedMessage.MessageType)
+		return
 	}
 }
 
@@ -123,26 +142,66 @@ func (n *NetworkNode) SendBlock(conn *websocket.Conn, message Message) {
 func (n *NetworkNode) SendBlockValidation() {
 	message := Message{
 		MessageType: BlockValidation,
-		Block:       *<-n.BlockChannelIn,
+		Block:       *<-n.ValidatorToNetwork,
 	}
 
 	// TODO: update node list
-
 	for _, node := range n.NodeList {
 		conn, err := n.Connect(node, "8080")
 		if err != nil {
 			log.Println("connect:", err)
 			continue
 		}
-		defer func(conn *websocket.Conn) {
+
+		n.SendBlock(conn, message)
+		responseMessage := n.WaitForResponse(conn)
+
+		// If verification is true, publickey exists and signature is correct
+		if responseMessage.VerificationSuccess &&
+			!signature.NewECDSA().VerifyBytes(message.Block.GetHashString(), responseMessage.PublicKey, responseMessage.Signature) {
+			message.Block.Sign(responseMessage.PublicKey, responseMessage.Signature)
+		}
+
+		err = conn.Close()
+		if err != nil {
+			log.Println("Error closing connection:", err)
+		}
+	}
+
+	decision := (float32(len(message.Block.Witness.ValidatorsPublicKeys)) / float32(len(n.NodeList))) >= Threshold
+	if decision {
+		for _, node := range n.NodeList {
+			conn, err := n.Connect(node, "8080")
+			if err != nil {
+				log.Println("connect:", err)
+				continue
+			}
+
+			message.MessageType = BlockApproval
+			n.SendBlock(conn, message)
+
 			err = conn.Close()
 			if err != nil {
 				log.Println("Error closing connection:", err)
 			}
-		}(conn)
+		}
 
-		n.SendBlock(conn, message)
+		n.BlockApprovalChannel <- &message.Block
+	} else {
+		n.BlockDenialChannel <- &message.Block
 	}
+}
+
+func (n *NetworkNode) WaitForResponse(conn *websocket.Conn) validation.ResponseMessage {
+	_ = conn.SetReadDeadline(time.Now().Add(time.Second * ResponseTime))
+	_, message, err := conn.ReadMessage()
+	responseMessage := validation.ResponseMessage{
+		VerificationSuccess: false,
+	}
+	if err == nil {
+		_ = json.Unmarshal(message, &responseMessage)
+	}
+	return responseMessage
 }
 
 func (n *NetworkNode) Connect(ip string, port string) (*websocket.Conn, error) {
@@ -175,4 +234,24 @@ func (n *NetworkNode) HandleWebSocketNewBlock(w http.ResponseWriter, r *http.Req
 	}(conn)
 
 	n.ReadMessages(conn)
+}
+
+func (n *NetworkNode) HandleWebSocketUpdateNodeList(w http.ResponseWriter, r *http.Request) {
+	conn, err := n.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("WebSocket upgrade failed:", err)
+		return
+	}
+	defer func(conn *websocket.Conn) {
+		err = conn.Close()
+		if err != nil {
+			log.Println("Error closing connection:", err)
+		}
+	}(conn)
+
+	n.UpdateNodeList(conn)
+}
+
+func (n *NetworkNode) UpdateNodeList(conn *websocket.Conn) {
+
 }
