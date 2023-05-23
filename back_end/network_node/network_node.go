@@ -32,7 +32,6 @@ type Message struct {
 	Block       block.Block `json:"block"`
 }
 
-// network node struct
 type NetworkNode struct {
 	upgrader             websocket.Upgrader
 	ValidatorToNetwork   <-chan *block.Block
@@ -47,7 +46,6 @@ type NetworkNode struct {
 	Mutex       sync.Mutex
 }
 
-// constructor for network node
 func NewNetworkNode(
 	valToNetChan <-chan *block.Block,
 	netToValChan chan<- *block.Block,

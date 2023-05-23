@@ -216,9 +216,8 @@ func (v *Validator) SignBlock(block *block.Block) (keys.PublicKeyBytes, singleSi
 
 func (v *Validator) VerifyBlock(block *block.Block) bool {
 	v.Node.Mutex.Lock()
-	verificationStatus := block.Verify(v.Node)
-	v.Node.Mutex.Unlock()
-	return verificationStatus
+	defer v.Node.Mutex.Unlock()
+	return block.Verify(v.Node)
 }
 
 func (v *Validator) AddBlockToChain(block *block.Block) error {
@@ -231,13 +230,13 @@ type IndexedDataActualizer interface {
 
 func (v *Validator) ActualizeNodeData(block *block.Block) {
 	v.Node.Mutex.Lock()
+	defer v.Node.Mutex.Unlock()
 	for _, transaction := range block.Body.Transactions {
 		txExact, ok := transaction.GetTxBody().(IndexedDataActualizer)
 		if ok {
 			txExact.ActualizeIndexedData(v.Node)
 		}
 	}
-	v.Node.Mutex.Unlock()
 }
 
 func (v *Validator) UpdateValidatorKeys() {
