@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -41,7 +42,9 @@ type NetworkNode struct {
 	ResponseChannel      <-chan validation.ResponseMessage
 	ValidatorKeysChannel chan<- []keys.PublicKeyBytes
 
-	NodeList []string
+	NodeList    []string
+	MyPublicKey keys.PublicKeyBytes
+	Mutex       sync.Mutex
 }
 
 // constructor for network node
@@ -59,6 +62,7 @@ func NewNetworkNode(
 		BlockApprovalChannel: blockApprovalChan,
 		ResponseChannel:      responseChan,
 		ValidatorKeysChannel: validatorKeysChan,
+		MyPublicKey:          validatorPublicKey,
 		upgrader:             websocket.Upgrader{},
 	}
 
@@ -82,7 +86,7 @@ func (n *NetworkNode) Start(port string) {
 func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 	_, message, err := conn.ReadMessage()
 	if err != nil {
-		log.Println("read:", err)
+		log.Println("read in ReadMessages:", err)
 		return
 	}
 
@@ -146,6 +150,7 @@ func (n *NetworkNode) SendBlockValidation() {
 	}
 
 	// TODO: update node list
+	n.Mutex.Lock()
 	for _, node := range n.NodeList {
 		conn, err := n.Connect(node, "8080")
 		if err != nil {
@@ -168,6 +173,7 @@ func (n *NetworkNode) SendBlockValidation() {
 		}
 	}
 
+	// TODO: Consider the case when we didn't update NodeList cause of Mutex lock and added to blockchain
 	decision := (float32(len(message.Block.Witness.ValidatorsPublicKeys)) / float32(len(n.NodeList))) >= Threshold
 	if decision {
 		for _, node := range n.NodeList {
@@ -185,11 +191,11 @@ func (n *NetworkNode) SendBlockValidation() {
 				log.Println("Error closing connection:", err)
 			}
 		}
-
 		n.BlockApprovalChannel <- &message.Block
 	} else {
 		n.BlockDenialChannel <- &message.Block
 	}
+	n.Mutex.Unlock()
 }
 
 func (n *NetworkNode) WaitForResponse(conn *websocket.Conn) validation.ResponseMessage {
@@ -253,5 +259,33 @@ func (n *NetworkNode) HandleWebSocketUpdateNodeList(w http.ResponseWriter, r *ht
 }
 
 func (n *NetworkNode) UpdateNodeList(conn *websocket.Conn) {
+	_, message, err := conn.ReadMessage()
+	if err != nil {
+		log.Println("read in UpdateNodeList:", err)
+		return
+	}
 
+	type DTOList struct {
+		NodeList []struct {
+			Hostname     string              `json:"hostname"`
+			ValidatorKey keys.PublicKeyBytes `json:"validator_key"`
+		} `json:"node_list"`
+	}
+
+	dtoList := &DTOList{}
+	_ = json.Unmarshal(message, &dtoList)
+	publicKeys := []keys.PublicKeyBytes{}
+
+	n.Mutex.Lock()
+	n.NodeList = []string{}
+	for _, node := range dtoList.NodeList {
+		if node.ValidatorKey == n.MyPublicKey {
+			continue
+		}
+		n.NodeList = append(n.NodeList, node.Hostname)
+		publicKeys = append(publicKeys, node.ValidatorKey)
+	}
+	n.Mutex.Unlock()
+
+	n.ValidatorKeysChannel <- publicKeys
 }
