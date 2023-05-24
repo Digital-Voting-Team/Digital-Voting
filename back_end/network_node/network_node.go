@@ -1,6 +1,7 @@
 package network_node
 
 import (
+	"bytes"
 	"digital-voting/block"
 	"digital-voting/signature/keys"
 	signature "digital-voting/signature/signatures/single_signature"
@@ -44,9 +45,12 @@ type NetworkNode struct {
 	NodeList    []string
 	MyPublicKey keys.PublicKeyBytes
 	Mutex       sync.Mutex
+
+	hostname string
 }
 
 func NewNetworkNode(
+	hostname string,
 	valToNetChan <-chan *block.Block,
 	netToValChan chan<- *block.Block,
 	blockApprovalChan chan<- *block.Block,
@@ -62,10 +66,15 @@ func NewNetworkNode(
 		ValidatorKeysChannel: validatorKeysChan,
 		MyPublicKey:          validatorPublicKey,
 		upgrader:             websocket.Upgrader{},
+
+		hostname: hostname,
 	}
 
+	// TODO : consider better naming
 	http.HandleFunc("/block", nn.HandleWebSocketNewBlock)
 	http.HandleFunc("/update", nn.HandleWebSocketUpdateNodeList)
+	// ws endpoint for ping
+	http.HandleFunc("/ping", nn.HandleWebSocketPing)
 
 	go func() {
 		for {
@@ -77,8 +86,34 @@ func NewNetworkNode(
 }
 
 // Start start network node
-func (n *NetworkNode) Start(port string) {
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+func (n *NetworkNode) Start(port string, nodeConnectorHostname string) error {
+	err := n.registerInNodeConnector(nodeConnectorHostname)
+	if err != nil {
+		return err
+	}
+
+	return http.ListenAndServe(":"+port, nil)
+}
+
+func (n *NetworkNode) registerInNodeConnector(nodeConnectorHostname string) error {
+	s := struct {
+		Hostname     string              `json:"hostname"`
+		ValidatorKey keys.PublicKeyBytes `json:"validator_key"`
+	}{
+		Hostname:     n.hostname,
+		ValidatorKey: n.MyPublicKey,
+	}
+
+	marshalled, err := json.Marshal(s)
+	if err != nil {
+		return err
+	}
+	println("Sending request to node connector")
+	_, err = http.Post("http://"+nodeConnectorHostname+"/nodes", "application/json", bytes.NewBuffer(marshalled))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
@@ -273,7 +308,7 @@ func (n *NetworkNode) UpdateNodeList(conn *websocket.Conn) {
 	dtoList := &DTOList{}
 	_ = json.Unmarshal(message, &dtoList)
 	publicKeys := []keys.PublicKeyBytes{}
-
+	log.Println("dtoList:", dtoList)
 	n.Mutex.Lock()
 	n.NodeList = []string{}
 	for _, node := range dtoList.NodeList {
@@ -286,4 +321,38 @@ func (n *NetworkNode) UpdateNodeList(conn *websocket.Conn) {
 	n.Mutex.Unlock()
 
 	n.ValidatorKeysChannel <- publicKeys
+}
+
+func (n *NetworkNode) HandleWebSocketPing(w http.ResponseWriter, r *http.Request) {
+	conn, err := n.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("WebSocket upgrade failed:", err)
+		return
+	}
+
+	// set ping handler
+	conn.SetPingHandler(func(appData string) error {
+		log.Println("Received ping")
+
+		err := conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(15*time.Second))
+		if err != nil {
+			log.Println("Error sending pong:", err)
+		}
+
+		return nil
+	})
+
+	defer func(conn *websocket.Conn) {
+		err := conn.Close()
+		println("closing connection")
+		if err != nil {
+			log.Println("Error closing connection11:", err)
+		}
+	}(conn)
+
+	_, _, err = conn.ReadMessage()
+	if err != nil {
+		log.Println("Error reading message:", err)
+		return
+	}
 }
