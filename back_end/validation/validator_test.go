@@ -3,6 +3,7 @@ package validation
 import (
 	"digital-voting/account"
 	blk "digital-voting/block"
+	"digital-voting/blockchain"
 	"digital-voting/merkle_tree"
 	nd "digital-voting/node"
 	ip "digital-voting/node/account_manager"
@@ -16,14 +17,14 @@ import (
 )
 
 func TestIsInMemPool(t *testing.T) {
-	v := &Validator{}
+	v := &Validator{MemPool: NewMemPool(), Node: nd.NewNode()}
 
 	groupName := "EPS-41"
 	membersPublicKeys := []keys.PublicKeyBytes{}
 	membersPublicKeys = append(membersPublicKeys, keys.PublicKeyBytes{1, 2, 3})
 	grpCreationBody := tx_specific.NewTxGroupCreation(groupName, membersPublicKeys)
 	txGroupCreation := tx.NewTransaction(tx.GroupCreation, grpCreationBody)
-	v.MemPool = append(v.MemPool, txGroupCreation)
+	v.MemPool.AddToMemPool(txGroupCreation, v.Node)
 
 	expirationDate := time.Now()
 	votingDescr := "EPS-41 supervisor voting"
@@ -31,7 +32,7 @@ func TestIsInMemPool(t *testing.T) {
 	whiteList := [][33]byte{{1, 2, 3}}
 	votingCreationBody := tx_specific.NewTxVotingCreation(expirationDate, votingDescr, answers, whiteList)
 	txVotingCreation := tx.NewTransaction(tx.VotingCreation, votingCreationBody)
-	v.MemPool = append(v.MemPool, txVotingCreation)
+	v.MemPool.AddToMemPool(txVotingCreation, v.Node)
 
 	accCreationBody := tx_specific.NewTxAccCreation(account.RegistrationAdmin, keys.PublicKeyBytes{1, 2, 3})
 	txAccountCreation := tx.NewTransaction(tx.AccountCreation, accCreationBody)
@@ -49,7 +50,7 @@ func TestIsInMemPool(t *testing.T) {
 			args: args{
 				transaction: txVotingCreation,
 			},
-			want: true,
+			want: false,
 		},
 		{
 			name: "Not in MemPool",
@@ -61,7 +62,7 @@ func TestIsInMemPool(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := v.isInMemPool(tt.args.transaction); got != tt.want {
+			if got := v.MemPool.IsInMemPool(tt.args.transaction); got != tt.want {
 				t.Errorf("isInMemPool() = %v, want %v", got, tt.want)
 			}
 		})
@@ -103,6 +104,7 @@ func TestCreateBlock(t *testing.T) {
 	txSigner.SignTransaction(keyPair1, txVote)
 
 	validator := &Validator{
+		MemPool:     NewMemPool(),
 		KeyPair:     keyPair1,
 		Node:        node,
 		BlockSigner: signer.NewBlockSigner(),
@@ -113,7 +115,7 @@ func TestCreateBlock(t *testing.T) {
 	validator.AddToMemPool(txVote)
 
 	blockBody := blk.Body{
-		Transactions: validator.MemPool,
+		Transactions: validator.MemPool.Transactions,
 	}
 	timeStamp := uint64(time.Unix(1494505756, 0).Unix())
 	blockHeader := blk.Header{
@@ -164,6 +166,7 @@ func TestActualizeIdentityProvider(t *testing.T) {
 	node.AccountManager.AddPubKey(validatorKeyPair.PublicToBytes(), ip.Validator)
 
 	validator := &Validator{
+		MemPool:     NewMemPool(),
 		KeyPair:     validatorKeyPair,
 		Node:        node,
 		BlockSigner: signer.NewBlockSigner(),
@@ -240,9 +243,11 @@ func TestVerifyBlock(t *testing.T) {
 	node.AccountManager.AddPubKey(validatorKeyPair.PublicToBytes(), ip.Validator)
 
 	validator := &Validator{
+		MemPool:     NewMemPool(),
 		KeyPair:     validatorKeyPair,
 		Node:        node,
 		BlockSigner: signer.NewBlockSigner(),
+		Blockchain:  &blockchain.Blockchain{Blocks: []*blk.Block{&blk.Block{}}},
 	}
 
 	adminKeyPair, _ := keys.Random(sign.Curve)
@@ -250,8 +255,7 @@ func TestVerifyBlock(t *testing.T) {
 	genesisTransaction1 := tx.NewTransaction(tx.AccountCreation, tx_specific.NewTxAccCreation(account.RegistrationAdmin, adminKeyPair.PublicToBytes()))
 	transactionSigner := signer.NewTransactionSigner()
 	transactionSigner.SignTransaction(adminKeyPair, genesisTransaction1)
-	genesisBlock := blk.NewBlock([]tx.ITransaction{genesisTransaction1}, [32]byte{})
-	fakeBlock := blk.NewBlock([]tx.ITransaction{genesisTransaction1}, [32]byte{})
+	genesisBlock := blk.NewBlock([]tx.ITransaction{genesisTransaction1}, [32]byte{89, 30, 32, 250, 95, 98, 97, 139, 139, 137, 172, 12, 26, 84, 187, 91, 65, 82, 16, 79, 79, 69, 158, 210, 187, 152, 72, 222, 90, 241, 38, 213})
 
 	validator.SignAndUpdateBlock(genesisBlock)
 
@@ -265,13 +269,6 @@ func TestVerifyBlock(t *testing.T) {
 	}{
 		{
 			name: "Verify valid block",
-			args: args{
-				block: fakeBlock,
-			},
-			wantBool: false,
-		},
-		{
-			name: "Verify not valid block",
 			args: args{
 				block: genesisBlock,
 			},

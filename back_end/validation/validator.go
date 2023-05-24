@@ -12,7 +12,6 @@ import (
 	"digital-voting/signer"
 	tx "digital-voting/transaction"
 	"log"
-	"math"
 	"time"
 )
 
@@ -26,7 +25,7 @@ type ResponseMessage struct {
 
 type Validator struct {
 	KeyPair           *keys.KeyPair
-	MemPool           []tx.ITransaction
+	MemPool           *MemPool
 	Node              *node.Node
 	BlockSigner       *signer.BlockSigner
 	TransactionSigner *signer.TransactionSigner
@@ -36,8 +35,11 @@ type Validator struct {
 	ValidatorToNetwork   chan<- *block.Block
 	BlockApprovalChannel <-chan *block.Block
 	BlockDenialChannel   <-chan *block.Block
-	TransactionChannel   chan tx.ITransaction
-	ResponseChannel      chan<- ResponseMessage
+	TransactionChannel   <-chan tx.ITransaction
+
+	TxResponseChannel    chan<- bool
+	BlockResponseChannel chan<- ResponseMessage
+
 	ValidatorKeysChannel <-chan []keys.PublicKeyBytes
 }
 
@@ -47,8 +49,9 @@ func NewValidator(
 	valToNetChan chan<- *block.Block,
 	blockApprovalChan <-chan *block.Block,
 	blockDenialChan <-chan *block.Block,
-	transactionChan chan tx.ITransaction,
-	responseChan chan<- ResponseMessage,
+	transactionChan <-chan tx.ITransaction,
+	txResponseChan chan<- bool,
+	blockResponseChan chan<- ResponseMessage,
 	validatorKeysChan <-chan []keys.PublicKeyBytes,
 ) *Validator {
 	validatorKeys, err := keys.Random(curve.NewCurve25519())
@@ -57,7 +60,7 @@ func NewValidator(
 	}
 	v := &Validator{
 		KeyPair:              validatorKeys,
-		MemPool:              []tx.ITransaction{},
+		MemPool:              NewMemPool(),
 		Node:                 node.NewNode(),
 		BlockSigner:          signer.NewBlockSigner(),
 		TransactionSigner:    signer.NewTransactionSigner(),
@@ -67,7 +70,8 @@ func NewValidator(
 		BlockApprovalChannel: blockApprovalChan,
 		BlockDenialChannel:   blockDenialChan,
 		TransactionChannel:   transactionChan,
-		ResponseChannel:      responseChan,
+		BlockResponseChannel: blockResponseChan,
+		TxResponseChannel:    txResponseChan,
 		ValidatorKeysChannel: validatorKeysChan,
 	}
 
@@ -83,6 +87,7 @@ func (v *Validator) StartRoutines() {
 	go v.ApproveBlock()
 	go v.DenyBlock()
 	go v.UpdateValidatorKeys()
+	go v.AddNewTransaction()
 }
 
 // ValidateBlocks wait for blocks from channel and validate them
@@ -103,7 +108,7 @@ func (v *Validator) ValidateBlocks() {
 				VerificationSuccess: false,
 			}
 		}
-		v.ResponseChannel <- response
+		v.BlockResponseChannel <- response
 	}
 }
 
@@ -133,11 +138,7 @@ func (v *Validator) ApproveBlock() {
 func (v *Validator) DenyBlock() {
 	for {
 		deniedBlock := <-v.BlockDenialChannel
-		for _, transaction := range deniedBlock.Body.Transactions {
-			if transaction.Verify(v.Node) {
-				v.MemPool = append([]tx.ITransaction{transaction}, v.MemPool...)
-			}
-		}
+		v.MemPool.RestoreMemPool(deniedBlock.Body.Transactions, v.Node)
 	}
 }
 
@@ -148,32 +149,23 @@ func (v *Validator) CreateAndSendBlock() {
 		select {
 		case <-ticker.C:
 			hash := v.Blockchain.GetLastBlockHash()
-			if len(v.MemPool) > 0 {
+			if v.MemPool.GetTransactionsCount() > 0 {
 				v.ValidatorToNetwork <- v.CreateBlock(hash)
 			}
 		default:
 			hash := v.Blockchain.GetLastBlockHash()
-			if len(v.MemPool) >= MaxTransactionsInBlock {
+			if v.MemPool.GetTransactionsCount() >= MaxTransactionsInBlock {
 				v.ValidatorToNetwork <- v.CreateBlock(hash)
 			}
 		}
 	}
 }
 
-func (v *Validator) isInMemPool(transaction tx.ITransaction) bool {
-	for _, v := range v.MemPool {
-		if v == transaction {
-			return true
-		}
-	}
-
+func (v *Validator) AddToMemPool(newTransaction tx.ITransaction) bool {
+	v.Node.Mutex.Lock()
+	defer v.Node.Mutex.Unlock()
+	v.MemPool.AddToMemPool(newTransaction, v.Node)
 	return false
-}
-
-func (v *Validator) AddToMemPool(newTransaction tx.ITransaction) {
-	if !v.isInMemPool(newTransaction) && newTransaction.CheckOnCreate(v.Node) {
-		v.MemPool = append(v.MemPool, newTransaction)
-	}
 }
 
 func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
@@ -181,11 +173,9 @@ func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
 
 	// Takes up to MAX_TRANSACTIONS_IN_BLOCK transactions from beginning of MemPool and create block body with them
 	maxNumber := MaxTransactionsInBlock
-	numberInBlock := int(math.Min(float64(len(v.MemPool)), float64(maxNumber)))
 	blockBody := block.Body{
-		Transactions: v.MemPool[:numberInBlock],
+		Transactions: v.MemPool.GetWithUpperBound(maxNumber),
 	}
-
 	// Create block header
 	blockHeader := block.Header{
 		Previous:   previousBlockHash,
@@ -201,9 +191,6 @@ func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
 
 	// Sign block
 	v.SignBlock(newBlock)
-
-	// TODO: think of way to restore transactions in case of rejecting block
-	v.MemPool = v.MemPool[numberInBlock:]
 
 	return newBlock
 }
@@ -250,5 +237,12 @@ func (v *Validator) UpdateValidatorKeys() {
 			v.Node.AccountManager.AddPubKey(key, account_manager.Validator)
 		}
 		v.Node.Mutex.Unlock()
+	}
+}
+
+func (v *Validator) AddNewTransaction() {
+	for {
+		newTransaction := <-v.TransactionChannel
+		v.TxResponseChannel <- v.MemPool.AddToMemPool(newTransaction, v.Node)
 	}
 }
