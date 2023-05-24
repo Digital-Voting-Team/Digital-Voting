@@ -73,7 +73,6 @@ func NewNetworkNode(
 	// TODO : consider better naming
 	http.HandleFunc("/block", nn.HandleWebSocketNewBlock)
 	http.HandleFunc("/update", nn.HandleWebSocketUpdateNodeList)
-	// ws endpoint for ping
 	http.HandleFunc("/ping", nn.HandleWebSocketPing)
 
 	go func() {
@@ -86,13 +85,13 @@ func NewNetworkNode(
 }
 
 // Start start network node
-func (n *NetworkNode) Start(port string, nodeConnectorHostname string) error {
+func (n *NetworkNode) Start(nodeConnectorHostname string) error {
 	err := n.registerInNodeConnector(nodeConnectorHostname)
 	if err != nil {
 		return err
 	}
 
-	return http.ListenAndServe(":"+port, nil)
+	return http.ListenAndServe(n.hostname, nil)
 }
 
 func (n *NetworkNode) registerInNodeConnector(nodeConnectorHostname string) error {
@@ -308,15 +307,15 @@ func (n *NetworkNode) UpdateNodeList(conn *websocket.Conn) {
 	dtoList := &DTOList{}
 	_ = json.Unmarshal(message, &dtoList)
 	publicKeys := []keys.PublicKeyBytes{}
-	log.Println("dtoList:", dtoList)
+	//log.Println("dtoList:", dtoList)
 	n.Mutex.Lock()
 	n.NodeList = []string{}
 	for _, node := range dtoList.NodeList {
-		if node.ValidatorKey == n.MyPublicKey {
+		publicKeys = append(publicKeys, node.ValidatorKey)
+		if node.Hostname == n.hostname {
 			continue
 		}
 		n.NodeList = append(n.NodeList, node.Hostname)
-		publicKeys = append(publicKeys, node.ValidatorKey)
 	}
 	n.Mutex.Unlock()
 
@@ -332,7 +331,7 @@ func (n *NetworkNode) HandleWebSocketPing(w http.ResponseWriter, r *http.Request
 
 	// set ping handler
 	conn.SetPingHandler(func(appData string) error {
-		log.Println("Received ping")
+		//log.Println("Received ping")
 
 		err := conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(15*time.Second))
 		if err != nil {
@@ -344,15 +343,15 @@ func (n *NetworkNode) HandleWebSocketPing(w http.ResponseWriter, r *http.Request
 
 	defer func(conn *websocket.Conn) {
 		err := conn.Close()
-		println("closing connection")
+		//println("closing connection")
 		if err != nil {
-			log.Println("Error closing connection11:", err)
+			log.Println("Error closing connection:", err)
 		}
 	}(conn)
 
 	_, _, err = conn.ReadMessage()
 	if err != nil {
-		log.Println("Error reading message:", err)
+		//log.Println("Error reading message:", err)
 		return
 	}
 }

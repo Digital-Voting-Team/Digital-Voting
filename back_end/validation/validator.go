@@ -91,6 +91,7 @@ func (v *Validator) ValidateBlocks() {
 	for {
 		newBlock := <-v.NetworkToValidator
 		if v.VerifyBlock(newBlock) {
+			log.Printf("Successfully verified block %s", newBlock.GetHashString())
 			publicKey, signature := v.SignBlock(newBlock)
 			response = ResponseMessage{
 				VerificationSuccess: true,
@@ -123,6 +124,7 @@ func (v *Validator) ApproveBlock() {
 			if err != nil {
 				log.Fatalln(err)
 			}
+			log.Printf("Successfully added block %s", approvedBlock.GetHashString())
 		}
 	}
 }
@@ -217,7 +219,7 @@ func (v *Validator) SignBlock(block *block.Block) (keys.PublicKeyBytes, singleSi
 func (v *Validator) VerifyBlock(block *block.Block) bool {
 	v.Node.Mutex.Lock()
 	defer v.Node.Mutex.Unlock()
-	return block.Verify(v.Node)
+	return block.Verify(v.Node, v.Blockchain.GetLastBlockHash())
 }
 
 func (v *Validator) AddBlockToChain(block *block.Block) error {
