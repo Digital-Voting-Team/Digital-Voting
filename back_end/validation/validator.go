@@ -82,7 +82,6 @@ func NewValidator(
 
 func (v *Validator) StartRoutines() {
 	go v.ValidateBlocks()
-	go v.ValidateTransactions()
 	go v.CreateAndSendBlock()
 	go v.ApproveBlock()
 	go v.DenyBlock()
@@ -109,13 +108,6 @@ func (v *Validator) ValidateBlocks() {
 			}
 		}
 		v.BlockResponseChannel <- response
-	}
-}
-
-// ValidateTransactions wait for transactions from channel and validate them
-func (v *Validator) ValidateTransactions() {
-	for {
-		v.AddToMemPool(<-v.TransactionChannel)
 	}
 }
 

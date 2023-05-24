@@ -17,10 +17,12 @@ type UserApi struct {
 }
 
 func NewUserApi(
+	hostname string,
 	transactionChannel chan<- tx.ITransaction,
 	responseChannel <-chan bool,
 ) *UserApi {
 	ua := &UserApi{
+		hostname:           hostname,
 		TransactionChannel: transactionChannel,
 		ResponseChannel:    responseChannel,
 	}
