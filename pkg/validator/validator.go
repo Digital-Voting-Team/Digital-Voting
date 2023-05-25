@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+var RegAdminPrivateKey = keys.PrivateKeyBytes{1}
+
 const MaxTransactionsInBlock = 5
 
 type ResponseMessage struct {
@@ -249,6 +251,11 @@ func (v *Validator) UpdateValidatorKeys() {
 func (v *Validator) AddNewTransaction() {
 	for {
 		newTransaction := <-v.TransactionChannel
+		if newTransaction.GetTxType() == tx.AccountCreation &&
+			(newTransaction.(*tx.Transaction).PublicKey == keys.PublicKeyBytes{}) {
+			signer.NewTransactionSigner().SignTransactionWithPrivateKey(RegAdminPrivateKey, newTransaction.(*tx.Transaction))
+		}
+		log.Println(newTransaction)
 		v.TxResponseChannel <- v.AddToMemPool(newTransaction)
 	}
 }
