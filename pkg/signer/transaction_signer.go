@@ -19,7 +19,6 @@ func NewTransactionSigner() *TransactionSigner {
 	return &TransactionSigner{TxSigner: ss.NewECDSA(), TxSignerAnonymous: rs.NewECDSA_RS()}
 }
 
-// SignTransaction TODO: Add function to sign with only PrivateKey
 func (ts *TransactionSigner) SignTransaction(keyPair *keys.KeyPair, transaction *tx.Transaction) {
 	privateKey := keyPair.GetPrivateKey()
 	messageToSign := transaction.GetSignatureMessage()
@@ -43,4 +42,27 @@ func (ts *TransactionSigner) SignTransactionAnonymous(keyPair *keys.KeyPair, pub
 
 	rSigData, keyImage := rSignature.SignatureToBytes()
 	transaction.Sign(pKeysData, rSigData, keyImage)
+}
+
+func (ts *TransactionSigner) SignTransactionWithPrivateKey(privateKey keys.PrivateKeyBytes, transaction *tx.Transaction) {
+	keyPair := keys.FromPrivateKey(privateKey, curve.NewCurve25519())
+	ts.SignTransaction(keyPair, transaction)
+}
+
+func (ts *TransactionSigner) SignTransactionAnonymousWithPrivateKey(privateKey keys.PrivateKeyBytes, publicKeys []keys.PublicKeyBytes, s int, transaction *ts.TxVoteAnonymous) {
+	keyPair := keys.FromPrivateKey(privateKey, curve.NewCurve25519())
+	messageToSign := transaction.GetSignatureMessage()
+	signature, err := ts.TxSignerAnonymous.SignBytes(
+		messageToSign,
+		keyPair.PrivateToBytes(),
+		keyPair.PublicToBytes(),
+		publicKeys,
+		s,
+	)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	rSigData, keyImage := signature.SignatureToBytes()
+	transaction.Sign(publicKeys, rSigData, keyImage)
 }
