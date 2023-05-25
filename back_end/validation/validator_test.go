@@ -24,7 +24,7 @@ func TestIsInMemPool(t *testing.T) {
 	membersPublicKeys = append(membersPublicKeys, keys.PublicKeyBytes{1, 2, 3})
 	grpCreationBody := tx_specific.NewTxGroupCreation(groupName, membersPublicKeys)
 	txGroupCreation := tx.NewTransaction(tx.GroupCreation, grpCreationBody)
-	v.MemPool.AddToMemPool(txGroupCreation, v.Node)
+	v.MemPool.AddToMemPool(txGroupCreation)
 
 	expirationDate := time.Now()
 	votingDescr := "EPS-41 supervisor voting"
@@ -32,7 +32,7 @@ func TestIsInMemPool(t *testing.T) {
 	whiteList := [][33]byte{{1, 2, 3}}
 	votingCreationBody := tx_specific.NewTxVotingCreation(expirationDate, votingDescr, answers, whiteList)
 	txVotingCreation := tx.NewTransaction(tx.VotingCreation, votingCreationBody)
-	v.MemPool.AddToMemPool(txVotingCreation, v.Node)
+	v.MemPool.AddToMemPool(txVotingCreation)
 
 	accCreationBody := tx_specific.NewTxAccCreation(account.RegistrationAdmin, keys.PublicKeyBytes{1, 2, 3})
 	txAccountCreation := tx.NewTransaction(tx.AccountCreation, accCreationBody)
@@ -50,7 +50,7 @@ func TestIsInMemPool(t *testing.T) {
 			args: args{
 				transaction: txVotingCreation,
 			},
-			want: false,
+			want: true,
 		},
 		{
 			name: "Not in MemPool",
@@ -256,6 +256,7 @@ func TestVerifyBlock(t *testing.T) {
 	transactionSigner := signer.NewTransactionSigner()
 	transactionSigner.SignTransaction(adminKeyPair, genesisTransaction1)
 	genesisBlock := blk.NewBlock([]tx.ITransaction{genesisTransaction1}, [32]byte{89, 30, 32, 250, 95, 98, 97, 139, 139, 137, 172, 12, 26, 84, 187, 91, 65, 82, 16, 79, 79, 69, 158, 210, 187, 152, 72, 222, 90, 241, 38, 213})
+	fakeBlock := blk.NewBlock([]tx.ITransaction{genesisTransaction1}, [32]byte{})
 
 	validator.SignAndUpdateBlock(genesisBlock)
 
@@ -273,6 +274,13 @@ func TestVerifyBlock(t *testing.T) {
 				block: genesisBlock,
 			},
 			wantBool: true,
+		},
+		{
+			name: "Verify bot valid block",
+			args: args{
+				block: fakeBlock,
+			},
+			wantBool: false,
 		},
 	}
 	for _, tt := range tests {

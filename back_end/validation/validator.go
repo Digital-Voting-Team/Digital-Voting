@@ -155,9 +155,12 @@ func (v *Validator) CreateAndSendBlock() {
 
 func (v *Validator) AddToMemPool(newTransaction tx.ITransaction) bool {
 	v.Node.Mutex.Lock()
-	defer v.Node.Mutex.Unlock()
-	v.MemPool.AddToMemPool(newTransaction, v.Node)
-	return false
+	response := newTransaction.CheckOnCreate(v.Node)
+	v.Node.Mutex.Unlock()
+	if response {
+		response = v.MemPool.AddToMemPool(newTransaction)
+	}
+	return response
 }
 
 func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
@@ -182,7 +185,7 @@ func (v *Validator) CreateBlock(previousBlockHash [32]byte) *block.Block {
 	}
 
 	// Sign block
-	v.SignBlock(newBlock)
+	v.SignAndUpdateBlock(newBlock)
 
 	return newBlock
 }
@@ -236,6 +239,6 @@ func (v *Validator) UpdateValidatorKeys() {
 func (v *Validator) AddNewTransaction() {
 	for {
 		newTransaction := <-v.TransactionChannel
-		v.TxResponseChannel <- v.MemPool.AddToMemPool(newTransaction, v.Node)
+		v.TxResponseChannel <- v.AddToMemPool(newTransaction)
 	}
 }

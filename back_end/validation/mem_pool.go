@@ -33,10 +33,10 @@ func (mp *MemPool) IsInMemPool(transaction tx.ITransaction) bool {
 	return false
 }
 
-func (mp *MemPool) AddToMemPool(newTransaction tx.ITransaction, node *node.Node) bool {
+func (mp *MemPool) AddToMemPool(newTransaction tx.ITransaction) bool {
 	mp.mutex.Lock()
 	defer mp.mutex.Unlock()
-	if !mp.IsInMemPool(newTransaction) && newTransaction.CheckOnCreate(node) {
+	if !mp.IsInMemPool(newTransaction) {
 		mp.Transactions = append(mp.Transactions, newTransaction)
 		return true
 	}
