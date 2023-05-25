@@ -70,11 +70,7 @@ func (b *Block) GetHashString() string {
 	return base64.URLEncoding.EncodeToString(hash[:])
 }
 
-func (b *Block) Verify(node *node.Node, lastBlockHash [32]byte) bool {
-	if b.Header.Previous != lastBlockHash {
-		return false
-	}
-
+func (b *Block) Verify(node *node.Node) bool {
 	merkleRoot := merkle_tree.GetMerkleRoot(b.Body.Transactions)
 
 	if !b.Witness.Verify(node.AccountManager, b.GetHashString()) {

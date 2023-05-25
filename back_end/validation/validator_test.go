@@ -247,7 +247,7 @@ func TestVerifyBlock(t *testing.T) {
 		KeyPair:     validatorKeyPair,
 		Node:        node,
 		BlockSigner: signer.NewBlockSigner(),
-		Blockchain:  &blockchain.Blockchain{Blocks: []*blk.Block{&blk.Block{}}},
+		Blockchain:  &blockchain.Blockchain{Blocks: []*blk.Block{{}}},
 	}
 
 	adminKeyPair, _ := keys.Random(sign.Curve)

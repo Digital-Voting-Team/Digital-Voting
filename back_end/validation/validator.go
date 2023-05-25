@@ -196,9 +196,10 @@ func (v *Validator) SignBlock(block *block.Block) (keys.PublicKeyBytes, singleSi
 }
 
 func (v *Validator) VerifyBlock(block *block.Block) bool {
+	prevHashValid := block.Header.Previous == v.Blockchain.GetLastBlockHash()
 	v.Node.Mutex.Lock()
 	defer v.Node.Mutex.Unlock()
-	return block.Verify(v.Node, v.Blockchain.GetLastBlockHash())
+	return prevHashValid && block.Verify(v.Node)
 }
 
 func (v *Validator) AddBlockToChain(block *block.Block) error {
