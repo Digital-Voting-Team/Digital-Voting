@@ -130,8 +130,20 @@ func (v *Validator) ApproveBlock() {
 func (v *Validator) DenyBlock() {
 	for {
 		deniedBlock := <-v.BlockDenialChannel
-		v.MemPool.RestoreMemPool(deniedBlock.Body.Transactions, v.Node)
+		v.RestoreMemPool(deniedBlock.Body.Transactions)
 	}
+}
+
+func (v *Validator) RestoreMemPool(transactions []tx.ITransaction) {
+	transactionsToRestore := transactions
+	v.Node.Mutex.Lock()
+	for _, transaction := range transactions {
+		if transaction.Verify(v.Node) {
+			transactionsToRestore = append(transactionsToRestore, transaction)
+		}
+	}
+	v.Node.Mutex.Unlock()
+	v.MemPool.RestoreMemPool(transactionsToRestore)
 }
 
 // TODO: get last block hash from blockchain

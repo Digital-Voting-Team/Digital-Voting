@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"digital-voting/node"
 	tx "digital-voting/transaction"
 	"math"
 	"sync"
@@ -43,14 +42,10 @@ func (mp *MemPool) AddToMemPool(newTransaction tx.ITransaction) bool {
 	return false
 }
 
-func (mp *MemPool) RestoreMemPool(transactions []tx.ITransaction, node *node.Node) {
+func (mp *MemPool) RestoreMemPool(transactions []tx.ITransaction) {
 	mp.mutex.Lock()
 	defer mp.mutex.Unlock()
-	for _, transaction := range transactions {
-		if transaction.Verify(node) {
-			mp.Transactions = append([]tx.ITransaction{transaction}, mp.Transactions...)
-		}
-	}
+	mp.Transactions = append(transactions, mp.Transactions...)
 }
 
 func (mp *MemPool) GetWithUpperBound(upperBound int) []tx.ITransaction {
