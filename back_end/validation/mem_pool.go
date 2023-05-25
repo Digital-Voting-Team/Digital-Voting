@@ -45,7 +45,11 @@ func (mp *MemPool) AddToMemPool(newTransaction tx.ITransaction) bool {
 func (mp *MemPool) RestoreMemPool(transactions []tx.ITransaction) {
 	mp.mutex.Lock()
 	defer mp.mutex.Unlock()
-	mp.Transactions = append(transactions, mp.Transactions...)
+	for _, transaction := range transactions {
+		if !mp.IsInMemPool(transaction) {
+			mp.Transactions = append([]tx.ITransaction{transaction}, mp.Transactions...)
+		}
+	}
 }
 
 func (mp *MemPool) GetWithUpperBound(upperBound int) []tx.ITransaction {
