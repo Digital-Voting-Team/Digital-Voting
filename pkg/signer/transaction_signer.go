@@ -1,0 +1,46 @@
+package signer
+
+import (
+	tx "github.com/Digital-Voting-Team/Digital-Voting/pkg/blockchain/transaction"
+	ts "github.com/Digital-Voting-Team/Digital-Voting/pkg/blockchain/transaction/transaction_specific"
+	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/curve"
+	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/keys"
+	rs "github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/signatures/ring_signature"
+	ss "github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/signatures/single_signature"
+	"log"
+)
+
+type TransactionSigner struct {
+	TxSigner          *ss.ECDSA
+	TxSignerAnonymous *rs.ECDSA_RS
+}
+
+func NewTransactionSigner() *TransactionSigner {
+	return &TransactionSigner{TxSigner: ss.NewECDSA(), TxSignerAnonymous: rs.NewECDSA_RS()}
+}
+
+// SignTransaction TODO: Add function to sign with only PrivateKey
+func (ts *TransactionSigner) SignTransaction(keyPair *keys.KeyPair, transaction *tx.Transaction) {
+	privateKey := keyPair.GetPrivateKey()
+	messageToSign := transaction.GetSignatureMessage()
+
+	signature := ts.TxSigner.Sign(messageToSign, privateKey)
+	transaction.Sign(keyPair.PublicToBytes(), signature.SignatureToBytes())
+}
+
+func (ts *TransactionSigner) SignTransactionAnonymous(keyPair *keys.KeyPair, publicKeys []*curve.Point, s int, transaction *ts.TxVoteAnonymous) {
+	messageToSign := transaction.GetSignatureMessage()
+
+	rSignature, err := ts.TxSignerAnonymous.Sign(messageToSign, keyPair, publicKeys, s)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	pKeysData := make([]keys.PublicKeyBytes, len(publicKeys))
+	for i := 0; i < len(pKeysData); i++ {
+		pKeysData[i] = keys.PublicKeyBytes(publicKeys[i].PointToBytes())
+	}
+
+	rSigData, keyImage := rSignature.SignatureToBytes()
+	transaction.Sign(pKeysData, rSigData, keyImage)
+}
