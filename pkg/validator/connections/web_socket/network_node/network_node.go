@@ -119,7 +119,7 @@ func (n *NetworkNode) registerInNodeConnector(nodeConnectorHostname string) erro
 	if err != nil {
 		return err
 	}
-	println("Sending request to repository connector")
+	log.Println("Sending request to repository connector")
 	_, err = http.Post("http://"+nodeConnectorHostname+"/nodes", "application/json", bytes.NewBuffer(marshalled))
 	if err != nil {
 		return err
@@ -150,6 +150,8 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 		log.Println("blk unmarshal:", err)
 		return
 	}
+
+	log.Printf("Received block %v\nBlock hash: %s\nMessageType: %v", receivedBlock, receivedBlock.GetHashString(), receivedMessage.MessageType)
 
 	switch receivedMessage.MessageType {
 	case BlockValidation:
@@ -193,7 +195,9 @@ func (n *NetworkNode) SendBlockValidation() {
 		Block:       *<-n.ValidatorToNetwork,
 	}
 
-	// TODO: update repository list
+	log.Printf("Sending block %v\nBlock hash: %s", message.Block, message.Block.GetHashString())
+
+	// TODO: update node list
 	n.Mutex.Lock()
 	for _, indexedData := range n.NodeList {
 		conn, err := n.Connect(indexedData, "8080")
@@ -398,8 +402,10 @@ func (n *NetworkNode) addNewTransaction(conn *websocket.Conn) {
 		return
 	}
 
+	log.Printf("Received new transaction %v\nTxHash: %s", transaction, transaction.GetHashString())
 	n.TransactionChannel <- transaction
 	success := <-n.TransactionResponseChannel
+	log.Printf("Transaction with hash %s\nVerification status: %v", transaction, success)
 
 	err = conn.WriteJSON(struct {
 		Response bool `json:"response"`

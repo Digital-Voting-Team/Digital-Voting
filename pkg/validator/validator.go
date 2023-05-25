@@ -255,7 +255,6 @@ func (v *Validator) AddNewTransaction() {
 			(newTransaction.(*tx.Transaction).PublicKey == keys.PublicKeyBytes{}) {
 			signer.NewTransactionSigner().SignTransactionWithPrivateKey(RegAdminPrivateKey, newTransaction.(*tx.Transaction))
 		}
-		log.Println(newTransaction)
 		v.TxResponseChannel <- v.AddToMemPool(newTransaction)
 	}
 }
