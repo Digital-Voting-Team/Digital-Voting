@@ -70,6 +70,7 @@ func (tx *JSONTransaction) UnmarshallJSON(marshalledTransaction []byte) (transac
 			returnTransaction = &transaction_specific.TxVoteAnonymous{
 				TxType:        tx.TxType,
 				VotingLink:    tx.VotingLink,
+
 				Answer:        tx.Answer,
 				Nonce:         tx.Nonce,
 				RingSignature: tx.RingSignature,
