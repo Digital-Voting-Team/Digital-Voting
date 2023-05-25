@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	blk "github.com/Digital-Voting-Team/Digital-Voting/pkg/blockchain/block"
+	tx "github.com/Digital-Voting-Team/Digital-Voting/pkg/blockchain/transaction"
+	"github.com/Digital-Voting-Team/Digital-Voting/pkg/blockchain/transaction/transaction_json"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/keys"
 	ss "github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/signatures/single_signature"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator"
@@ -39,8 +41,11 @@ type NetworkNode struct {
 	NetworkToValidator   chan<- *blk.Block
 	BlockApprovalChannel chan<- *blk.Block
 	BlockDenialChannel   chan<- *blk.Block
-	ResponseChannel      <-chan validator.ResponseMessage
+	BlockResponseChannel <-chan validator.ResponseMessage
 	ValidatorKeysChannel chan<- []keys.PublicKeyBytes
+
+	TransactionChannel         chan<- tx.ITransaction
+	TransactionResponseChannel <-chan bool
 
 	NodeList    []string
 	MyPublicKey keys.PublicKeyBytes
@@ -54,18 +59,24 @@ func NewNetworkNode(
 	valToNetChan <-chan *blk.Block,
 	netToValChan chan<- *blk.Block,
 	blockApprovalChan chan<- *blk.Block,
-	responseChan <-chan validator.ResponseMessage,
+	blockResponseChan <-chan validator.ResponseMessage,
 	validatorKeysChan chan<- []keys.PublicKeyBytes,
+	transactionChannel chan<- tx.ITransaction,
+	transactionResponseChannel <-chan bool,
 	validatorPublicKey keys.PublicKeyBytes,
 ) *NetworkNode {
 	nn := &NetworkNode{
-		ValidatorToNetwork:   valToNetChan,
-		NetworkToValidator:   netToValChan,
-		BlockApprovalChannel: blockApprovalChan,
-		ResponseChannel:      responseChan,
+		ValidatorToNetwork:         valToNetChan,
+		NetworkToValidator:         netToValChan,
+		BlockApprovalChannel:       blockApprovalChan,
+		BlockResponseChannel:       blockResponseChan,
+		TransactionChannel:         transactionChannel,
+		TransactionResponseChannel: transactionResponseChannel,
+
 		ValidatorKeysChannel: validatorKeysChan,
-		MyPublicKey:          validatorPublicKey,
-		upgrader:             websocket.Upgrader{},
+
+		MyPublicKey: validatorPublicKey,
+		upgrader:    websocket.Upgrader{},
 
 		hostname: hostname,
 	}
@@ -74,6 +85,7 @@ func NewNetworkNode(
 	http.HandleFunc("/block", nn.HandleWebSocketNewBlock)
 	http.HandleFunc("/update", nn.HandleWebSocketUpdateNodeList)
 	http.HandleFunc("/ping", nn.HandleWebSocketPing)
+	http.HandleFunc("/transaction", nn.HandleWebSocketNewTransaction)
 
 	go func() {
 		for {
@@ -142,7 +154,7 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 	switch receivedMessage.MessageType {
 	case BlockValidation:
 		n.NetworkToValidator <- receivedBlock
-		responseMessage := <-n.ResponseChannel
+		responseMessage := <-n.BlockResponseChannel
 
 		//log.Println(responseMessage.VerificationSuccess)
 
@@ -352,6 +364,48 @@ func (n *NetworkNode) HandleWebSocketPing(w http.ResponseWriter, r *http.Request
 	_, _, err = conn.ReadMessage()
 	if err != nil {
 		//log.Println("Error reading message:", err)
+		return
+	}
+}
+
+func (n *NetworkNode) HandleWebSocketNewTransaction(w http.ResponseWriter, r *http.Request) {
+	conn, err := n.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("WebSocket upgrade failed:", err)
+		return
+	}
+	defer func(conn *websocket.Conn) {
+		err = conn.Close()
+		if err != nil {
+			log.Println("Error closing connection:", err)
+		}
+	}(conn)
+
+	n.addNewTransaction(conn)
+}
+
+func (n *NetworkNode) addNewTransaction(conn *websocket.Conn) {
+	_, message, err := conn.ReadMessage()
+	if err != nil {
+		log.Println("read in ReadMessages:", err)
+		return
+	}
+
+	newTxJson := &transaction_json.JSONTransaction{}
+	transaction, err := newTxJson.UnmarshallJSON(message)
+	if err != nil {
+		log.Println("Error reading transaction from UserAPI")
+		return
+	}
+
+	n.TransactionChannel <- transaction
+	success := <-n.TransactionResponseChannel
+
+	err = conn.WriteJSON(struct {
+		Response bool `json:"response"`
+	}{Response: success})
+	if err != nil {
+		log.Println("Error writing response")
 		return
 	}
 }
