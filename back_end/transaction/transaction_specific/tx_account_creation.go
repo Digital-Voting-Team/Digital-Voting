@@ -70,7 +70,7 @@ func (tx *TxAccountCreation) Verify(node *node.Node, publicKey keys.PublicKeyByt
 	return tx.CheckPublicKeyByRole(node, publicKey)
 }
 
-func (tx *TxAccountCreation) ActualizeIdentities(node *node.Node) {
+func (tx *TxAccountCreation) ActualizeIndexedData(node *node.Node) {
 	// TODO: think of linkage between enum in account and in identity provider
 	node.AccountManager.AddPubKey(tx.NewPublicKey, account_manager.Identifier(tx.AccountType))
 }

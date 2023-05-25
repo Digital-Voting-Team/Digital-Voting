@@ -28,3 +28,8 @@ func (b *Blockchain) GetBlock(hash [32]byte) (*block.Block, error) {
 
 	return nil, fmt.Errorf("block with given hash was not found")
 }
+
+// GetLastBlockHash get last block hash
+func (b *Blockchain) GetLastBlockHash() [32]byte {
+	return b.Blocks[len(b.Blocks)-1].GetHash()
+}

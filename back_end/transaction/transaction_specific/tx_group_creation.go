@@ -109,7 +109,7 @@ func (tx *TxGroupCreation) Verify(node *node.Node, publicKey keys.PublicKeyBytes
 	return tx.checkData(node) && tx.CheckPublicKeyByRole(node, publicKey)
 }
 
-func (tx *TxGroupCreation) ActualizeIdentities(node *node.Node) {
+func (tx *TxGroupCreation) ActualizeIndexedData(node *node.Node) {
 	node.AccountManager.AddPubKey(tx.GroupIdentifier, account_manager.GroupIdentifier)
 	node.GroupProvider.AddNewGroup(indexed_data.GroupDTO{
 		GroupIdentifier:   tx.GroupIdentifier,

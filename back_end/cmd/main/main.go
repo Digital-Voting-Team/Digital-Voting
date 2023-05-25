@@ -45,9 +45,10 @@ func main() {
 
 	genesisBlock := block.NewBlock([]tx.ITransaction{genesisTransaction1, genesisTransaction2}, [32]byte{})
 
-	validator.SignBlock(genesisBlock)
+	validator.SignAndUpdateBlock(genesisBlock)
 	currentBlockchain := &blockchain.Blockchain{}
-	err := validator.AddBlockToChain(currentBlockchain, genesisBlock)
+	validator.Blockchain = currentBlockchain
+	err := validator.AddBlockToChain(genesisBlock)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
@@ -70,8 +71,8 @@ func main() {
 	validator.AddToMemPool(txReg3)
 
 	block1 := validator.CreateBlock(genesisBlock.GetHash())
-	validator.AddBlockToChain(currentBlockchain, block1)
-	validator.ActualizeIdentityProvider(block1)
+	validator.AddBlockToChain(block1)
+	validator.ActualizeNodeData(block1)
 
 	// Add second block with voting and group
 	whitelist := make([][33]byte, 0, len(node.AccountManager.UserPubKeys))
@@ -94,8 +95,8 @@ func main() {
 	validator.AddToMemPool(txGroup)
 
 	block2 := validator.CreateBlock(block1.GetHash())
-	validator.AddBlockToChain(currentBlockchain, block2)
-	validator.ActualizeIdentityProvider(block2)
+	validator.AddBlockToChain(block2)
+	validator.ActualizeNodeData(block2)
 
 	// Add third block with votings
 	txVote1 := tx.NewTransaction(tx.Vote, stx.NewTxVote(txVoting.GetHash(), 1))
@@ -113,11 +114,11 @@ func main() {
 	validator.AddToMemPool(txVote3)
 
 	block3 := validator.CreateBlock(block2.GetHash())
-	err = validator.AddBlockToChain(currentBlockchain, block3)
+	err = validator.AddBlockToChain(block3)
 	if err != nil {
 		log.Panicln(err)
 	}
-	validator.ActualizeIdentityProvider(block3)
+	validator.ActualizeNodeData(block3)
 
 	// Print blockchain
 	for _, b := range currentBlockchain.Blocks {

@@ -7,7 +7,9 @@ import (
 	"digital-voting/signature/keys"
 	signature "digital-voting/signature/signatures/single_signature"
 	tx "digital-voting/transaction"
+	"digital-voting/transaction/transaction_json"
 	"encoding/base64"
+	"encoding/json"
 	"time"
 )
 
@@ -82,4 +84,36 @@ func (b *Block) Verify(node *node.Node) bool {
 	}
 
 	return merkleRoot == b.Header.MerkleRoot
+}
+
+// UnmarshallBlock unmarshalls the JSON representation of the Block into the Block itself
+func UnmarshallBlock(marshalledBlock []byte) (*Block, error) {
+	temp := map[string]interface{}{}
+	err := json.Unmarshal(marshalledBlock, &temp)
+	if err != nil {
+		return nil, err
+	}
+
+	// Block header and witness are unmarshalled automatically
+	unmarshalledBlock := &Block{}
+	// Header and Witness are unmarshalled automatically, Body isn't
+	_ = json.Unmarshal(marshalledBlock, unmarshalledBlock)
+	unmarshalledBlock.Body.Transactions = nil
+
+	// Transactions are unmarshalled through iterative process
+	for _, transactions := range temp["body"].(map[string]any)["transactions"].([]any) {
+		marshall, err := json.Marshal(transactions)
+		if err != nil {
+			return nil, err
+		}
+
+		iTransaction, err := (&transaction_json.JSONTransaction{}).UnmarshallJSON(marshall)
+		if err != nil {
+			return nil, err
+		}
+
+		unmarshalledBlock.Body.AddTransaction(iTransaction)
+	}
+
+	return unmarshalledBlock, nil
 }
