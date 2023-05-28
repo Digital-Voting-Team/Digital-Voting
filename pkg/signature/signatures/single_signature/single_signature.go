@@ -2,7 +2,7 @@ package signatures
 
 import (
 	crypto "crypto/rand"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/curve"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/keys"
@@ -29,6 +29,11 @@ func NewECDSA() *ECDSA {
 type SingleSignature struct {
 	R *big.Int `json:"r"`
 	S *big.Int `json:"s"`
+}
+
+type EdwardsSignature struct {
+	R *curve.Point
+	S *big.Int
 }
 
 type SingleSignatureBytes [65]byte
@@ -86,7 +91,7 @@ func (ec *ECDSA) Sign(message string, privateKey *big.Int) *SingleSignature {
 		invK := new(big.Int).ModInverse(randK, ec.Curve.N)
 
 		// 5. Compute SHA-1(m) and convert this bit string to an integer ec.
-		h := sha1.New()
+		h := sha256.New()
 		h.Write([]byte(message))
 		e := utils.Hex2int(hex.EncodeToString(h.Sum(nil)))
 
@@ -96,6 +101,53 @@ func (ec *ECDSA) Sign(message string, privateKey *big.Int) *SingleSignature {
 	}
 	// 7. A's signatures for the message m is (r, s).
 	return &SingleSignature{R: &r, S: &s}
+}
+
+func (ec *ECDSA) EdwardsToSingleSignature(edwards *EdwardsSignature) *SingleSignature {
+	bytes := ec.Curve.MarshalCompressed(edwards.R)
+	return &SingleSignature{
+		R: new(big.Int).SetBytes(bytes[:]),
+		S: edwards.S,
+	}
+}
+
+func (ec *ECDSA) SingleToEdwardsSignature(single *SingleSignature) *EdwardsSignature {
+	bytes := curve.PointCompressed{}
+	single.R.FillBytes(bytes[:])
+	return &EdwardsSignature{
+		R: ec.Curve.UnmarshalCompressed(bytes),
+		S: single.S,
+	}
+}
+
+func (ec *ECDSA) SignEdDSA(message string, privateKey *big.Int, publicKey *curve.Point) *EdwardsSignature {
+	//rand.Seed(time.Now().UnixNano())
+	rand.Seed(65)
+	var (
+		R   *curve.Point
+		s   big.Int
+		err error
+	)
+	for s.String() == "0" {
+		h := sha256.New()
+		h.Write(privateKey.Bytes())
+		h.Write([]byte(message))
+		r := utils.Hex2int(hex.EncodeToString(h.Sum(nil)))
+		r.Mod(r, ec.Curve.N)
+
+		R, err = ec.Curve.MulPoint(utils.Clone(r), ec.GenPoint)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		h = sha256.New()
+		h.Write([]byte(R.String() + publicKey.String() + message))
+		H := utils.Hex2int(hex.EncodeToString(h.Sum(nil)))
+		H.Mod(H, ec.Curve.N)
+
+		s.Mul(privateKey, H).Add(&s, r).Mod(&s, ec.Curve.N)
+	}
+	return &EdwardsSignature{R: R, S: &s}
 }
 
 func (ec *ECDSA) VerifyBytes(message string, publicKey keys.PublicKeyBytes, signature SingleSignatureBytes) bool {
@@ -113,7 +165,7 @@ func (ec *ECDSA) Verify(message string, publicKey *curve.Point, signature *Singl
 	}
 
 	// 2. Compute SHA-1(m) and convert this bit string to an integer e
-	h := sha1.New()
+	h := sha256.New()
 	h.Write([]byte(message))
 	e := utils.Hex2int(hex.EncodeToString(h.Sum(nil)))
 
@@ -153,4 +205,33 @@ func (ec *ECDSA) Verify(message string, publicKey *curve.Point, signature *Singl
 
 	// 7. Accept the signatures if and only if v = r.
 	return new(big.Int).Sub(v, signature.R).String() == "0"
+}
+
+func (ec *ECDSA) VerifyEdDSA(message string, publicKey *curve.Point, signature *EdwardsSignature) bool {
+	if !ec.Curve.IsOnCurve(signature.R) ||
+		!utils.CheckInterval(signature.S, utils.GetInt(1), new(big.Int).Sub(ec.Curve.N, utils.GetInt(1))) {
+		return false
+	}
+
+	h := sha256.New()
+	h.Write([]byte(signature.R.String() + publicKey.String() + message))
+	H := utils.Hex2int(hex.EncodeToString(h.Sum(nil)))
+	H.Mod(H, ec.Curve.N)
+
+	P1, err := ec.Curve.MulPoint(utils.Clone(signature.S), ec.GenPoint)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	k, err := ec.Curve.MulPoint(H, publicKey)
+	P2, err := ec.Curve.AddPoint(signature.R, k)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return P1.Eq(P2)
+}
+
+func (ed *EdwardsSignature) Eq(other *EdwardsSignature) bool {
+	return ed.S.Cmp(other.S) == 0 && ed.R.Eq(other.R)
 }
