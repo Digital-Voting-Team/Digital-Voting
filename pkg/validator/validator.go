@@ -148,7 +148,7 @@ func (v *Validator) RestoreMemPool(transactions []tx.ITransaction) {
 
 // TODO: get last block hash from blockchain
 func (v *Validator) CreateAndSendBlock() {
-	ticker := time.NewTicker(time.Hour * 1)
+	ticker := time.NewTicker(time.Second * 5)
 	for {
 		select {
 		case <-ticker.C:

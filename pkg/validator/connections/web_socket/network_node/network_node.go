@@ -12,8 +12,10 @@ import (
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator"
 	"github.com/gorilla/websocket"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -32,7 +34,7 @@ const (
 
 type Message struct {
 	MessageType MsgType   `json:"message_type"`
-	Block       blk.Block `json:"blk"`
+	Block       blk.Block `json:"block"`
 }
 
 type NetworkNode struct {
@@ -119,11 +121,12 @@ func (n *NetworkNode) registerInNodeConnector(nodeConnectorHostname string) erro
 	if err != nil {
 		return err
 	}
-	log.Println("Sending request to repository connector")
+	log.Println("Sending request to node connector")
 	_, err = http.Post("http://"+nodeConnectorHostname+"/nodes", "application/json", bytes.NewBuffer(marshalled))
 	if err != nil {
 		return err
 	}
+	log.Println("Successfully registered in node connector")
 	return nil
 }
 
@@ -134,31 +137,31 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 		return
 	}
 
-	var messageMap map[string]any
+	messageMap := map[string]interface{}{}
 	err = json.Unmarshal(message, &messageMap)
 	if err != nil {
-		log.Println("json unmarshal:", err)
+		log.Println("json unmarshal here:", err)
 		return
 	}
 
 	receivedMessage := &Message{}
 	_ = json.Unmarshal(message, receivedMessage)
 
-	marshalledBlock, _ := json.Marshal(messageMap["blk"])
+	marshalledBlock, _ := json.Marshal(messageMap["block"])
 	receivedBlock, err := blk.UnmarshallBlock(marshalledBlock)
 	if err != nil {
-		log.Println("blk unmarshal:", err)
+		log.Println("block unmarshal:", err)
 		return
 	}
 
-	log.Printf("Received block %v\nBlock hash: %s\nMessageType: %v", receivedBlock, receivedBlock.GetHashString(), receivedMessage.MessageType)
+	log.Printf("Received block with hash %s\nMessageType: %v", receivedBlock.GetHashString(), receivedMessage.MessageType)
 
 	switch receivedMessage.MessageType {
 	case BlockValidation:
 		n.NetworkToValidator <- receivedBlock
 		responseMessage := <-n.BlockResponseChannel
 
-		//log.Println(responseMessage.VerificationSuccess)
+		log.Println(responseMessage.VerificationSuccess)
 
 		err = conn.WriteJSON(responseMessage)
 		if err != nil {
@@ -174,14 +177,8 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 }
 
 func (n *NetworkNode) SendBlock(conn *websocket.Conn, message Message) {
-	jsonMessage, err := json.Marshal(message)
-	if err != nil {
-		log.Println("json marshal:", err)
-		return
-	}
-
 	// Send the JSON message
-	err = conn.WriteJSON(jsonMessage)
+	err := conn.WriteJSON(message)
 	if err != nil {
 		log.Println("write:", err)
 		return
@@ -195,12 +192,13 @@ func (n *NetworkNode) SendBlockValidation() {
 		Block:       *<-n.ValidatorToNetwork,
 	}
 
-	log.Printf("Sending block %v\nBlock hash: %s", message.Block, message.Block.GetHashString())
+	log.Printf("Sending block with hash: %s", message.Block.GetHashString())
 
 	// TODO: update node list
 	n.Mutex.Lock()
 	for _, indexedData := range n.NodeList {
-		conn, err := n.Connect(indexedData, "8080")
+		address := strings.Split(indexedData, ":")
+		conn, err := n.Connect(address[0], address[1], "block")
 		if err != nil {
 			log.Println("connect:", err)
 			continue
@@ -222,10 +220,14 @@ func (n *NetworkNode) SendBlockValidation() {
 	}
 
 	// TODO: Consider the case when we didn't update NodeList cause of Mutex lock and added to blockchain
-	decision := (float32(len(message.Block.Witness.ValidatorsPublicKeys)) / float32(len(n.NodeList))) >= Threshold
+	desiredNumber := int(math.Floor(float64(len(n.NodeList)+1) * Threshold))
+	log.Println("Desired number of approvals:", desiredNumber)
+	decision := len(message.Block.Witness.ValidatorsPublicKeys) >= desiredNumber
+	log.Println("Decision:", decision)
 	if decision {
 		for _, indexedData := range n.NodeList {
-			conn, err := n.Connect(indexedData, "8080")
+			address := strings.Split(indexedData, ":")
+			conn, err := n.Connect(address[0], address[1], "block")
 			if err != nil {
 				log.Println("connect:", err)
 				continue
@@ -258,11 +260,11 @@ func (n *NetworkNode) WaitForResponse(conn *websocket.Conn) validator.ResponseMe
 	return responseMessage
 }
 
-func (n *NetworkNode) Connect(ip string, port string) (*websocket.Conn, error) {
+func (n *NetworkNode) Connect(ip string, port string, endpoint string) (*websocket.Conn, error) {
 	// IP address and port of the WebSocket server
 	//TODO check if ip not empty (consider how it will connect)
 
-	u := url.URL{Scheme: "ws", Host: ip + ":" + port, Path: "/ws"}
+	u := url.URL{Scheme: "ws", Host: ip + ":" + port, Path: endpoint}
 	log.Printf("connecting to %s", u.String())
 
 	// Establish a WebSocket connection
@@ -349,7 +351,7 @@ func (n *NetworkNode) HandleWebSocketPing(w http.ResponseWriter, r *http.Request
 	conn.SetPingHandler(func(appData string) error {
 		//log.Println("Received ping")
 
-		err := conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(15*time.Second))
+		err = conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(15*time.Second))
 		if err != nil {
 			log.Println("Error sending pong:", err)
 		}
@@ -358,7 +360,7 @@ func (n *NetworkNode) HandleWebSocketPing(w http.ResponseWriter, r *http.Request
 	})
 
 	defer func(conn *websocket.Conn) {
-		err := conn.Close()
+		err = conn.Close()
 		//println("closing connection")
 		if err != nil {
 			log.Println("Error closing connection:", err)
@@ -402,10 +404,10 @@ func (n *NetworkNode) addNewTransaction(conn *websocket.Conn) {
 		return
 	}
 
-	log.Printf("Received new transaction %v\nTxHash: %s", transaction, transaction.GetHashString())
+	//log.Printf("Received new transaction %v\nTxHash: %s", transaction, transaction.GetHashString())
 	n.TransactionChannel <- transaction
 	success := <-n.TransactionResponseChannel
-	log.Printf("Transaction with hash %s\nVerification status: %v", transaction, success)
+	//log.Printf("Transaction with hash %s\nVerification status: %v", transaction, success)
 
 	err = conn.WriteJSON(struct {
 		Response bool `json:"response"`

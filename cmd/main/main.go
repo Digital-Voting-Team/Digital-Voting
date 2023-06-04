@@ -50,6 +50,8 @@ func main() {
 
 	keyPair, _ := keys.FromRawSeed([32]byte{1}, curve.NewCurve25519())
 	v.Node.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.RegistrationAdmin)
+	v.Node.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.VotingCreationAdmin)
+	v.Node.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.User)
 
 	_ = nn.Start(":8080")
 }
