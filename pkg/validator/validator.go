@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-var RegAdminPrivateKey = keys.PrivateKeyBytes{1}
+//var RegAdminPrivateKey = keys.PrivateKeyBytes{1}
 
 const MaxTransactionsInBlock = 5
 
@@ -35,6 +35,7 @@ type Validator struct {
 	NetworkToValidator   <-chan *blk.Block
 	ValidatorToNetwork   chan<- *blk.Block
 	BlockApprovalChannel <-chan *blk.Block
+	ApproveResponseChan  chan<- bool
 	BlockDenialChannel   <-chan *blk.Block
 	TransactionChannel   <-chan tx.ITransaction
 
@@ -49,6 +50,7 @@ func NewValidator(
 	netToValChan <-chan *blk.Block,
 	valToNetChan chan<- *blk.Block,
 	blockApprovalChan <-chan *blk.Block,
+	approveResponseChan chan<- bool,
 	blockDenialChan <-chan *blk.Block,
 	transactionChan <-chan tx.ITransaction,
 	txResponseChan chan<- bool,
@@ -68,6 +70,7 @@ func NewValidator(
 		NetworkToValidator:   netToValChan,
 		ValidatorToNetwork:   valToNetChan,
 		BlockApprovalChannel: blockApprovalChan,
+		ApproveResponseChan:  approveResponseChan,
 		BlockDenialChannel:   blockDenialChan,
 		TransactionChannel:   transactionChan,
 		BlockResponseChannel: blockResponseChan,
@@ -95,7 +98,7 @@ func (v *Validator) ValidateBlocks() {
 	for {
 		newBlock := <-v.NetworkToValidator
 		if v.VerifyBlock(newBlock) {
-			log.Printf("Successfully verified block %s", newBlock.GetHashString())
+			log.Printf("Successfully verified block with hash %s", newBlock.GetHashString())
 			publicKey, signature := v.SignBlock(newBlock)
 			response = ResponseMessage{
 				VerificationSuccess: true,
@@ -117,12 +120,14 @@ func (v *Validator) ApproveBlock() {
 		approvedBlock := <-v.BlockApprovalChannel
 		if v.VerifyBlock(approvedBlock) {
 			err := v.AddBlockToChain(approvedBlock)
-			v.ActualizeNodeData(approvedBlock)
 			if err != nil {
 				log.Fatalln(err)
 			}
-			log.Printf("Successfully added block %s", approvedBlock.GetHashString())
+			v.ActualizeNodeData(approvedBlock)
+			log.Printf("Successfully added block with hash %s", approvedBlock.GetHashString())
+			v.ApproveResponseChan <- true
 		}
+		v.ApproveResponseChan <- false
 	}
 }
 
@@ -148,7 +153,7 @@ func (v *Validator) RestoreMemPool(transactions []tx.ITransaction) {
 
 // TODO: get last block hash from blockchain
 func (v *Validator) CreateAndSendBlock() {
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second * 10)
 	for {
 		select {
 		case <-ticker.C:
@@ -211,10 +216,13 @@ func (v *Validator) SignBlock(block *blk.Block) (keys.PublicKeyBytes, ss.SingleS
 }
 
 func (v *Validator) VerifyBlock(block *blk.Block) bool {
-	prevHashValid := block.Header.Previous == v.Blockchain.GetLastBlockHash()
+	if block.Header.Previous != v.Blockchain.GetLastBlockHash() || len(block.Body.Transactions) > MaxTransactionsInBlock {
+		return false
+	}
+
 	v.Node.Mutex.Lock()
 	defer v.Node.Mutex.Unlock()
-	return prevHashValid && block.Verify(v.Node)
+	return block.Verify(v.Node)
 }
 
 func (v *Validator) AddBlockToChain(block *blk.Block) error {
@@ -251,10 +259,10 @@ func (v *Validator) UpdateValidatorKeys() {
 func (v *Validator) AddNewTransaction() {
 	for {
 		newTransaction := <-v.TransactionChannel
-		if newTransaction.GetTxType() == tx.AccountCreation &&
-			(newTransaction.(*tx.Transaction).PublicKey == keys.PublicKeyBytes{}) {
-			signer.NewTransactionSigner().SignTransactionWithPrivateKey(RegAdminPrivateKey, newTransaction.(*tx.Transaction))
-		}
+		//if newTransaction.GetTxType() == tx.AccountCreation &&
+		//	(newTransaction.(*tx.Transaction).PublicKey == keys.PublicKeyBytes{}) {
+		//	signer.NewTransactionSigner().SignTransactionWithPrivateKey(RegAdminPrivateKey, newTransaction.(*tx.Transaction))
+		//}
 		v.TxResponseChannel <- v.AddToMemPool(newTransaction)
 	}
 }

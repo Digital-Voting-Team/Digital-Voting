@@ -15,6 +15,7 @@ func main() {
 	netToValChan := make(chan *block.Block)
 	valToNetChan := make(chan *block.Block)
 	blockApprovalChan := make(chan *block.Block)
+	approveResponseChan := make(chan bool)
 	blockDenialChan := make(chan *block.Block)
 	transactionChan := make(chan tx.ITransaction)
 	blockResponseChan := make(chan validator.ResponseMessage)
@@ -28,6 +29,7 @@ func main() {
 		netToValChan,
 		valToNetChan,
 		blockApprovalChan,
+		approveResponseChan,
 		blockDenialChan,
 		transactionChan,
 		txResponseChan,
@@ -41,6 +43,7 @@ func main() {
 		valToNetChan,
 		netToValChan,
 		blockApprovalChan,
+		approveResponseChan,
 		blockResponseChan,
 		validatorKeysChan,
 		transactionChan,
@@ -48,7 +51,7 @@ func main() {
 		pubKey,
 	)
 
-	keyPair, _ := keys.FromRawSeed([32]byte{1}, curve.NewCurve25519())
+	keyPair := keys.FromPrivateKey(keys.PrivateKeyBytes{1}, curve.NewCurve25519())
 	v.Node.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.RegistrationAdmin)
 	v.Node.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.VotingCreationAdmin)
 	v.Node.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.User)

@@ -32,6 +32,19 @@ const (
 	BlockDenial
 )
 
+func (mt MsgType) String() string {
+	switch mt {
+	case BlockValidation:
+		return "BlockValidation"
+	case BlockApproval:
+		return "BlockApproval"
+	case BlockDenial:
+		return "BlockDenial"
+	default:
+		return fmt.Sprintf("%d", int(mt))
+	}
+}
+
 type Message struct {
 	MessageType MsgType   `json:"message_type"`
 	Block       blk.Block `json:"block"`
@@ -42,6 +55,7 @@ type NetworkNode struct {
 	ValidatorToNetwork   <-chan *blk.Block
 	NetworkToValidator   chan<- *blk.Block
 	BlockApprovalChannel chan<- *blk.Block
+	ApprovalResponseChan <-chan bool
 	BlockDenialChannel   chan<- *blk.Block
 	BlockResponseChannel <-chan validator.ResponseMessage
 	ValidatorKeysChannel chan<- []keys.PublicKeyBytes
@@ -61,6 +75,7 @@ func NewNetworkNode(
 	valToNetChan <-chan *blk.Block,
 	netToValChan chan<- *blk.Block,
 	blockApprovalChan chan<- *blk.Block,
+	approvalResponseChan <-chan bool,
 	blockResponseChan <-chan validator.ResponseMessage,
 	validatorKeysChan chan<- []keys.PublicKeyBytes,
 	transactionChannel chan<- tx.ITransaction,
@@ -71,6 +86,7 @@ func NewNetworkNode(
 		ValidatorToNetwork:         valToNetChan,
 		NetworkToValidator:         netToValChan,
 		BlockApprovalChannel:       blockApprovalChan,
+		ApprovalResponseChan:       approvalResponseChan,
 		BlockResponseChannel:       blockResponseChan,
 		TransactionChannel:         transactionChannel,
 		TransactionResponseChannel: transactionResponseChannel,
@@ -154,14 +170,12 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 		return
 	}
 
-	log.Printf("Received block with hash %s\nMessageType: %v", receivedBlock.GetHashString(), receivedMessage.MessageType)
+	log.Printf("Received block with hash %s MessageType: %s", receivedBlock.GetHashString(), receivedMessage.MessageType)
 
 	switch receivedMessage.MessageType {
 	case BlockValidation:
 		n.NetworkToValidator <- receivedBlock
 		responseMessage := <-n.BlockResponseChannel
-
-		log.Println(responseMessage.VerificationSuccess)
 
 		err = conn.WriteJSON(responseMessage)
 		if err != nil {
@@ -170,6 +184,14 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 	case BlockApproval:
 		// TODO: consider denial and actions to restore correct state
 		n.BlockApprovalChannel <- receivedBlock
+		result := <-n.ApprovalResponseChan
+
+		err = conn.WriteJSON(struct {
+			Approved bool `json:"approved"`
+		}{result})
+		if err != nil {
+			fmt.Println(err)
+		}
 	default:
 		log.Printf("unknown message type %d", receivedMessage.MessageType)
 		return
@@ -235,6 +257,16 @@ func (n *NetworkNode) SendBlockValidation() {
 
 			message.MessageType = BlockApproval
 			n.SendBlock(conn, message)
+
+			_, responseMessage, err := conn.ReadMessage()
+			if err != nil {
+				log.Println("Error reading approval response:", err)
+			}
+			response := struct {
+				Approved bool `json:"approved"`
+			}{}
+			_ = json.Unmarshal(responseMessage, &response)
+			log.Println("Approval response:", response)
 
 			err = conn.Close()
 			if err != nil {
