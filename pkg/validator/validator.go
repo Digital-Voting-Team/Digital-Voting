@@ -33,6 +33,7 @@ type Validator struct {
 	BlockSigner *signer.BlockSigner
 	Blockchain  *blockchain.Blockchain
 
+	// TODO: consider optimizing or restructuring channels
 	NetworkToValidator   <-chan *blk.Block
 	ValidatorToNetwork   chan<- *blk.Block
 	BlockApprovalChannel <-chan *blk.Block

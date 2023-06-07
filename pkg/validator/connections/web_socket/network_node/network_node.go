@@ -51,7 +51,9 @@ type Message struct {
 }
 
 type NetworkNode struct {
-	upgrader             websocket.Upgrader
+	upgrader websocket.Upgrader
+
+	// TODO: consider optimizing or restructuring channels
 	ValidatorToNetwork   <-chan *blk.Block
 	NetworkToValidator   chan<- *blk.Block
 	BlockApprovalChannel chan<- *blk.Block
