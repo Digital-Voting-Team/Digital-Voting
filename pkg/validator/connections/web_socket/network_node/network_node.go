@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	blk "github.com/Digital-Voting-Team/Digital-Voting/pkg/blockchain/block"
-	tx "github.com/Digital-Voting-Team/Digital-Voting/pkg/blockchain/transaction"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/blockchain/transaction/transaction_json"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/keys"
 	ss "github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/signatures/single_signature"
@@ -54,23 +53,7 @@ type Message struct {
 type NetworkNode struct {
 	upgrader websocket.Upgrader
 
-	// TODO: consider optimizing or restructuring channels
-	NetworkToValidator   chan<- *blk.Block
-	ValidatorToNetwork   <-chan *blk.Block
-	BlockResponseChannel <-chan validator.ResponseMessage
-
-	BlockApprovalChannel    chan<- *blk.Block
-	ApprovalResponseChannel <-chan bool
-
-	BlockDenialChannel chan<- *blk.Block
-
-	TransactionChannel         chan<- tx.ITransaction
-	TransactionResponseChannel <-chan bool
-
-	ValidatorKeysChannel chan<- []keys.PublicKeyBytes
-
-	VotingsChannel   <-chan []indexed_votings.VotingDTO
-	PublicKeyChannel chan<- keys.PublicKeyBytes
+	Channels validator.Communication
 
 	NodeList    []string
 	MyPublicKey keys.PublicKeyBytes
@@ -82,35 +65,10 @@ type NetworkNode struct {
 func NewNetworkNode(
 	hostname string,
 	validatorPublicKey keys.PublicKeyBytes,
-	netToValChan chan<- *blk.Block,
-	valToNetChan <-chan *blk.Block,
-	blockResponseChan <-chan validator.ResponseMessage,
-	blockApprovalChan chan<- *blk.Block,
-	approvalResponseChan <-chan bool,
-	blockDenialChan chan<- *blk.Block,
-	transactionChannel chan<- tx.ITransaction,
-	transactionResponseChannel <-chan bool,
-	validatorKeysChan chan<- []keys.PublicKeyBytes,
-	votingsChannel <-chan []indexed_votings.VotingDTO,
-	publicKeyChannel chan<- keys.PublicKeyBytes,
+	channels validator.Communication,
 ) *NetworkNode {
 	nn := &NetworkNode{
-		NetworkToValidator:   netToValChan,
-		ValidatorToNetwork:   valToNetChan,
-		BlockResponseChannel: blockResponseChan,
-
-		BlockApprovalChannel:    blockApprovalChan,
-		ApprovalResponseChannel: approvalResponseChan,
-
-		BlockDenialChannel: blockDenialChan,
-
-		TransactionChannel:         transactionChannel,
-		TransactionResponseChannel: transactionResponseChannel,
-
-		ValidatorKeysChannel: validatorKeysChan,
-
-		PublicKeyChannel: publicKeyChannel,
-		VotingsChannel:   votingsChannel,
+		Channels: channels,
 
 		MyPublicKey: validatorPublicKey,
 		upgrader:    websocket.Upgrader{},
@@ -194,8 +152,8 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 
 	switch receivedMessage.MessageType {
 	case BlockValidation:
-		n.NetworkToValidator <- receivedBlock
-		responseMessage := <-n.BlockResponseChannel
+		n.Channels.NetworkToValidator <- receivedBlock
+		responseMessage := <-n.Channels.BlockResponse
 
 		err = conn.WriteJSON(responseMessage)
 		if err != nil {
@@ -203,8 +161,8 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 		}
 	case BlockApproval:
 		// TODO: consider denial and actions to restore correct state
-		n.BlockApprovalChannel <- receivedBlock
-		result := <-n.ApprovalResponseChannel
+		n.Channels.BlockApproval <- receivedBlock
+		result := <-n.Channels.ApprovalResponse
 
 		err = conn.WriteJSON(struct {
 			Approved bool `json:"approved"`
@@ -231,7 +189,7 @@ func (n *NetworkNode) SendBlock(conn *websocket.Conn, message Message) {
 func (n *NetworkNode) SendBlockValidation() {
 	message := Message{
 		MessageType: BlockValidation,
-		Block:       *<-n.ValidatorToNetwork,
+		Block:       *<-n.Channels.ValidatorToNetwork,
 	}
 
 	log.Printf("Sending block with hash: %s", message.Block.GetHashString())
@@ -294,11 +252,11 @@ func (n *NetworkNode) SendBlockValidation() {
 			}
 		}
 
-		n.BlockApprovalChannel <- &message.Block
-		result := <-n.ApprovalResponseChannel
+		n.Channels.BlockApproval <- &message.Block
+		result := <-n.Channels.ApprovalResponse
 		log.Printf("Block with hash %s; Approve result: %v", message.Block.GetHashString(), result)
 	} else {
-		n.BlockDenialChannel <- &message.Block
+		n.Channels.BlockDenial <- &message.Block
 	}
 	n.Mutex.Unlock()
 }
@@ -392,7 +350,7 @@ func (n *NetworkNode) UpdateNodeList(conn *websocket.Conn) {
 	}
 	n.Mutex.Unlock()
 
-	n.ValidatorKeysChannel <- publicKeys
+	n.Channels.ValidatorKeys <- publicKeys
 }
 
 func (n *NetworkNode) HandleWebSocketPing(w http.ResponseWriter, r *http.Request) {
@@ -460,8 +418,8 @@ func (n *NetworkNode) addNewTransaction(conn *websocket.Conn) {
 	}
 
 	log.Printf("Received new transaction with hash: %s", transaction.GetHashString())
-	n.TransactionChannel <- transaction
-	success := <-n.TransactionResponseChannel
+	n.Channels.Transaction <- transaction
+	success := <-n.Channels.TxResponse
 	log.Printf("Transaction with hash %s; Verification status: %v", transaction.GetHashString(), success)
 
 	err = conn.WriteJSON(struct {
@@ -505,8 +463,8 @@ func (n *NetworkNode) getVotings(conn *websocket.Conn) {
 		return
 	}
 
-	n.PublicKeyChannel <- publicKeyStruct.PublicKey
-	votings := <-n.VotingsChannel
+	n.Channels.PublicKey <- publicKeyStruct.PublicKey
+	votings := <-n.Channels.Votings
 
 	err = conn.WriteJSON(struct {
 		Votings []indexed_votings.VotingDTO `json:"votings"`

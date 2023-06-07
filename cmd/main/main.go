@@ -24,38 +24,33 @@ func main() {
 	validatorKeysChan := make(chan []keys.PublicKeyBytes)
 	votingsChan := make(chan []indexed_votings.VotingDTO)
 	pubKeyChan := make(chan keys.PublicKeyBytes)
+
+	channels := validator.Communication{
+		NetworkToValidator: netToValChan,
+		ValidatorToNetwork: valToNetChan,
+		BlockResponse:      blockResponseChan,
+		BlockApproval:      blockApprovalChan,
+		ApprovalResponse:   approvalResponseChan,
+		BlockDenial:        blockDenialChan,
+		Transaction:        transactionChan,
+		TxResponse:         txResponseChan,
+		ValidatorKeys:      validatorKeysChan,
+		Votings:            votingsChan,
+		PublicKey:          pubKeyChan,
+	}
+
 	bc := &blockchain.Blockchain{}
 	_ = bc.AddBlock(&block.Block{})
 
 	v := validator.NewValidator(
 		bc,
-		netToValChan,
-		valToNetChan,
-		blockResponseChan,
-		blockApprovalChan,
-		approvalResponseChan,
-		blockDenialChan,
-		transactionChan,
-		txResponseChan,
-		validatorKeysChan,
-		votingsChan,
-		pubKeyChan,
+		channels,
 	)
 
 	nn := network_node.NewNetworkNode(
 		"localhost:8081",
 		v.KeyPair.PublicToBytes(),
-		netToValChan,
-		valToNetChan,
-		blockResponseChan,
-		blockApprovalChan,
-		approvalResponseChan,
-		blockDenialChan,
-		transactionChan,
-		txResponseChan,
-		validatorKeysChan,
-		votingsChan,
-		pubKeyChan,
+		channels,
 	)
 
 	keyPair := keys.FromPrivateKey(keys.PrivateKeyBytes{1}, curve.NewCurve25519())

@@ -33,38 +33,12 @@ type Validator struct {
 	BlockSigner *signer.BlockSigner
 	Blockchain  *blockchain.Blockchain
 
-	// TODO: consider optimizing or restructuring channels
-	NetworkToValidator   <-chan *blk.Block
-	ValidatorToNetwork   chan<- *blk.Block
-	BlockResponseChannel chan<- ResponseMessage
-
-	BlockApprovalChannel <-chan *blk.Block
-	ApprovalResponseChan chan<- bool
-
-	BlockDenialChannel <-chan *blk.Block
-
-	TransactionChannel <-chan tx.ITransaction
-	TxResponseChannel  chan<- bool
-
-	ValidatorKeysChannel <-chan []keys.PublicKeyBytes
-
-	VotingsChannel   chan<- []indexed_votings.VotingDTO
-	PublicKeyChannel <-chan keys.PublicKeyBytes
+	Channels Communication
 }
 
 func NewValidator(
 	bc *blockchain.Blockchain,
-	netToValChan <-chan *blk.Block,
-	valToNetChan chan<- *blk.Block,
-	blockResponseChan chan<- ResponseMessage,
-	blockApprovalChan <-chan *blk.Block,
-	approvalResponseChan chan<- bool,
-	blockDenialChan <-chan *blk.Block,
-	transactionChan <-chan tx.ITransaction,
-	txResponseChan chan<- bool,
-	validatorKeysChan <-chan []keys.PublicKeyBytes,
-	votingsChan chan<- []indexed_votings.VotingDTO,
-	publicKeyChan <-chan keys.PublicKeyBytes,
+	channels Communication,
 ) *Validator {
 	validatorKeys, err := keys.Random(curve.NewCurve25519())
 	if err != nil {
@@ -77,22 +51,7 @@ func NewValidator(
 		BlockSigner: signer.NewBlockSigner(),
 		Blockchain:  bc,
 
-		NetworkToValidator:   netToValChan,
-		ValidatorToNetwork:   valToNetChan,
-		BlockResponseChannel: blockResponseChan,
-
-		BlockApprovalChannel: blockApprovalChan,
-		ApprovalResponseChan: approvalResponseChan,
-
-		BlockDenialChannel: blockDenialChan,
-
-		TransactionChannel: transactionChan,
-		TxResponseChannel:  txResponseChan,
-
-		ValidatorKeysChannel: validatorKeysChan,
-
-		VotingsChannel:   votingsChan,
-		PublicKeyChannel: publicKeyChan,
+		Channels: channels,
 	}
 
 	v.StartRoutines()
@@ -114,7 +73,7 @@ func (v *Validator) StartRoutines() {
 func (v *Validator) ValidateBlocks() {
 	var response ResponseMessage
 	for {
-		newBlock := <-v.NetworkToValidator
+		newBlock := <-v.Channels.NetworkToValidator
 		if v.VerifyBlock(newBlock) {
 			log.Printf("Successfully verified block with hash %s", newBlock.GetHashString())
 			publicKey, signature := v.SignBlock(newBlock)
@@ -128,14 +87,14 @@ func (v *Validator) ValidateBlocks() {
 				VerificationSuccess: false,
 			}
 		}
-		v.BlockResponseChannel <- response
+		v.Channels.BlockResponse <- response
 	}
 }
 
 // ApproveBlock wait for transactions from channel, approve and add them to blockchain
 func (v *Validator) ApproveBlock() {
 	for {
-		approvedBlock := <-v.BlockApprovalChannel
+		approvedBlock := <-v.Channels.BlockApproval
 		log.Printf("Block with hash %s received to approve", approvedBlock.GetHashString())
 		if v.VerifyBlock(approvedBlock) {
 			err := v.AddBlockToChain(approvedBlock)
@@ -143,9 +102,9 @@ func (v *Validator) ApproveBlock() {
 				log.Fatalln(err)
 			}
 			v.ActualizeNodeData(approvedBlock)
-			v.ApprovalResponseChan <- true
+			v.Channels.ApprovalResponse <- true
 		} else {
-			v.ApprovalResponseChan <- false
+			v.Channels.ApprovalResponse <- false
 		}
 	}
 }
@@ -153,7 +112,7 @@ func (v *Validator) ApproveBlock() {
 // DenyBlock wait for transactions from channel, restore transactions from it
 func (v *Validator) DenyBlock() {
 	for {
-		deniedBlock := <-v.BlockDenialChannel
+		deniedBlock := <-v.Channels.BlockDenial
 		v.RestoreMemPool(deniedBlock.Body.Transactions)
 	}
 }
@@ -178,12 +137,12 @@ func (v *Validator) CreateAndSendBlock() {
 		case <-ticker.C:
 			hash := v.Blockchain.GetLastBlockHash()
 			if v.MemPool.GetTransactionsCount() > 0 {
-				v.ValidatorToNetwork <- v.CreateBlock(hash)
+				v.Channels.ValidatorToNetwork <- v.CreateBlock(hash)
 			}
 		default:
 			hash := v.Blockchain.GetLastBlockHash()
 			if v.MemPool.GetTransactionsCount() >= MaxTransactionsInBlock {
-				v.ValidatorToNetwork <- v.CreateBlock(hash)
+				v.Channels.ValidatorToNetwork <- v.CreateBlock(hash)
 			}
 		}
 	}
@@ -268,7 +227,7 @@ func (v *Validator) ActualizeNodeData(block *blk.Block) {
 
 func (v *Validator) UpdateValidatorKeys() {
 	for {
-		newValidatorKeys := <-v.ValidatorKeysChannel
+		newValidatorKeys := <-v.Channels.ValidatorKeys
 		v.IndexedData.Mutex.Lock()
 		v.IndexedData.AccountManager.ValidatorPubKeys = map[keys.PublicKeyBytes]struct{}{}
 		for _, key := range newValidatorKeys {
@@ -280,18 +239,18 @@ func (v *Validator) UpdateValidatorKeys() {
 
 func (v *Validator) AddNewTransaction() {
 	for {
-		newTransaction := <-v.TransactionChannel
+		newTransaction := <-v.Channels.Transaction
 		//if newTransaction.GetTxType() == tx.AccountCreation &&
 		//	(newTransaction.(*tx.Transaction).PublicKey == keys.PublicKeyBytes{}) {
 		//	signer.NewTransactionSigner().SignTransactionWithPrivateKey(RegAdminPrivateKey, newTransaction.(*tx.Transaction))
 		//}
-		v.TxResponseChannel <- v.AddToMemPool(newTransaction)
+		v.Channels.TxResponse <- v.AddToMemPool(newTransaction)
 	}
 }
 
 func (v *Validator) GetVotingsForPubKey() {
 	for {
-		pubKey := <-v.PublicKeyChannel
+		pubKey := <-v.Channels.PublicKey
 
 		result := []indexed_votings.VotingDTO{}
 
@@ -312,6 +271,6 @@ func (v *Validator) GetVotingsForPubKey() {
 			}
 		}
 
-		v.VotingsChannel <- result
+		v.Channels.Votings <- result
 	}
 }
