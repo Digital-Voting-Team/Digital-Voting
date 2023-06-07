@@ -11,6 +11,7 @@ import (
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signer"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/repository"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/repository/account_manager"
+	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/repository/indexed_votings"
 	"log"
 	"time"
 )
@@ -265,4 +266,27 @@ func (v *Validator) AddNewTransaction() {
 		//}
 		v.TxResponseChannel <- v.AddToMemPool(newTransaction)
 	}
+}
+
+func (v *Validator) GetVotingsForPubKey(publicKey keys.PublicKeyBytes) []indexed_votings.VotingDTO {
+	result := []indexed_votings.VotingDTO{}
+
+	votings := v.Node.VotingManager.IndexedVotings
+
+	for _, voting := range votings {
+		flag := false
+		whiteList := voting.Whitelist
+		for identifier := range whiteList {
+			if v.Node.GroupManager.IsGroupMember(identifier, publicKey) || identifier == publicKey {
+				result = append(result, voting)
+				flag = true
+				break
+			}
+		}
+		if flag {
+			continue
+		}
+	}
+
+	return result
 }

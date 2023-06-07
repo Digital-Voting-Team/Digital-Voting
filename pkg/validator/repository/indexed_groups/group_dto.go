@@ -5,7 +5,7 @@ import (
 )
 
 type GroupDTO struct {
-	GroupIdentifier   [33]byte
-	GroupName         [256]byte
-	MembersPublicKeys []keys.PublicKeyBytes
+	GroupIdentifier   [33]byte              `json:"group_identifier"`
+	GroupName         [256]byte             `json:"group_name"`
+	MembersPublicKeys []keys.PublicKeyBytes `json:"members_public_keys"`
 }
