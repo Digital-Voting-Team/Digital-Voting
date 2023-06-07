@@ -116,7 +116,7 @@ func (tx *TxVoteAnonymous) checkData(indexedData *repository.IndexedData) bool {
 
 		flag := false
 
-		for _, identifier := range whiteList {
+		for identifier := range whiteList {
 			if indexedData.GroupManager.IsGroupMember(identifier, pubKey) || identifier == pubKey {
 				flag = true
 				break
