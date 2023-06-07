@@ -36,13 +36,15 @@ type Validator struct {
 	// TODO: consider optimizing or restructuring channels
 	NetworkToValidator   <-chan *blk.Block
 	ValidatorToNetwork   chan<- *blk.Block
-	BlockApprovalChannel <-chan *blk.Block
-	ApproveResponseChan  chan<- bool
-	BlockDenialChannel   <-chan *blk.Block
-	TransactionChannel   <-chan tx.ITransaction
-
-	TxResponseChannel    chan<- bool
 	BlockResponseChannel chan<- ResponseMessage
+
+	BlockApprovalChannel <-chan *blk.Block
+	ApprovalResponseChan chan<- bool
+
+	BlockDenialChannel <-chan *blk.Block
+
+	TransactionChannel <-chan tx.ITransaction
+	TxResponseChannel  chan<- bool
 
 	ValidatorKeysChannel <-chan []keys.PublicKeyBytes
 
@@ -54,12 +56,12 @@ func NewValidator(
 	bc *blockchain.Blockchain,
 	netToValChan <-chan *blk.Block,
 	valToNetChan chan<- *blk.Block,
+	blockResponseChan chan<- ResponseMessage,
 	blockApprovalChan <-chan *blk.Block,
-	approveResponseChan chan<- bool,
+	approvalResponseChan chan<- bool,
 	blockDenialChan <-chan *blk.Block,
 	transactionChan <-chan tx.ITransaction,
 	txResponseChan chan<- bool,
-	blockResponseChan chan<- ResponseMessage,
 	validatorKeysChan <-chan []keys.PublicKeyBytes,
 	votingsChan chan<- []indexed_votings.VotingDTO,
 	publicKeyChan <-chan keys.PublicKeyBytes,
@@ -69,22 +71,28 @@ func NewValidator(
 		log.Fatal(err)
 	}
 	v := &Validator{
-		KeyPair:              validatorKeys,
-		MemPool:              NewMemPool(),
-		IndexedData:          repository.NewIndexedData(),
-		BlockSigner:          signer.NewBlockSigner(),
-		Blockchain:           bc,
+		KeyPair:     validatorKeys,
+		MemPool:     NewMemPool(),
+		IndexedData: repository.NewIndexedData(),
+		BlockSigner: signer.NewBlockSigner(),
+		Blockchain:  bc,
+
 		NetworkToValidator:   netToValChan,
 		ValidatorToNetwork:   valToNetChan,
-		BlockApprovalChannel: blockApprovalChan,
-		ApproveResponseChan:  approveResponseChan,
-		BlockDenialChannel:   blockDenialChan,
-		TransactionChannel:   transactionChan,
 		BlockResponseChannel: blockResponseChan,
-		TxResponseChannel:    txResponseChan,
+
+		BlockApprovalChannel: blockApprovalChan,
+		ApprovalResponseChan: approvalResponseChan,
+
+		BlockDenialChannel: blockDenialChan,
+
+		TransactionChannel: transactionChan,
+		TxResponseChannel:  txResponseChan,
+
 		ValidatorKeysChannel: validatorKeysChan,
-		VotingsChannel:       votingsChan,
-		PublicKeyChannel:     publicKeyChan,
+
+		VotingsChannel:   votingsChan,
+		PublicKeyChannel: publicKeyChan,
 	}
 
 	v.StartRoutines()
@@ -135,9 +143,10 @@ func (v *Validator) ApproveBlock() {
 			}
 			v.ActualizeNodeData(approvedBlock)
 			log.Printf("Successfully added block with hash %s", approvedBlock.GetHashString())
-			v.ApproveResponseChan <- true
+			v.ApprovalResponseChan <- true
 		}
-		v.ApproveResponseChan <- false
+		log.Println("Block approval failed")
+		v.ApprovalResponseChan <- false
 	}
 }
 

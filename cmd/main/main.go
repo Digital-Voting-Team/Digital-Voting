@@ -16,7 +16,7 @@ func main() {
 	netToValChan := make(chan *block.Block)
 	valToNetChan := make(chan *block.Block)
 	blockApprovalChan := make(chan *block.Block)
-	approveResponseChan := make(chan bool)
+	approvalResponseChan := make(chan bool)
 	blockDenialChan := make(chan *block.Block)
 	transactionChan := make(chan tx.ITransaction)
 	blockResponseChan := make(chan validator.ResponseMessage)
@@ -31,31 +31,31 @@ func main() {
 		bc,
 		netToValChan,
 		valToNetChan,
+		blockResponseChan,
 		blockApprovalChan,
-		approveResponseChan,
+		approvalResponseChan,
 		blockDenialChan,
 		transactionChan,
 		txResponseChan,
-		blockResponseChan,
 		validatorKeysChan,
 		votingsChan,
 		pubKeyChan,
 	)
-	pubKey := v.KeyPair.PublicToBytes()
 
 	nn := network_node.NewNetworkNode(
 		"localhost:8081",
-		valToNetChan,
+		v.KeyPair.PublicToBytes(),
 		netToValChan,
-		blockApprovalChan,
-		approveResponseChan,
+		valToNetChan,
 		blockResponseChan,
-		validatorKeysChan,
+		blockApprovalChan,
+		approvalResponseChan,
+		blockDenialChan,
 		transactionChan,
 		txResponseChan,
+		validatorKeysChan,
 		votingsChan,
 		pubKeyChan,
-		pubKey,
 	)
 
 	keyPair := keys.FromPrivateKey(keys.PrivateKeyBytes{1}, curve.NewCurve25519())
