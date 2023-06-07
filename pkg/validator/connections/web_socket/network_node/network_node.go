@@ -265,7 +265,7 @@ func (n *NetworkNode) SendBlockValidation() {
 	desiredNumber := int(math.Floor(float64(len(n.NodeList)+1) * Threshold))
 	gotNumber := len(message.Block.Witness.ValidatorsPublicKeys)
 	decision := gotNumber >= desiredNumber
-	log.Printf("Need %d approvals; Got %d approvals", desiredNumber, gotNumber)
+	log.Printf("Need %d approvals; Got %d approvals; Decision: %v", desiredNumber, gotNumber, decision)
 	if decision {
 		for _, indexedData := range n.NodeList {
 			address := strings.Split(indexedData, ":")
@@ -293,7 +293,10 @@ func (n *NetworkNode) SendBlockValidation() {
 				log.Println("Error closing connection:", err)
 			}
 		}
+
 		n.BlockApprovalChannel <- &message.Block
+		result := <-n.ApprovalResponseChannel
+		log.Printf("Block with hash %s; Approve result: %v", message.Block.GetHashString(), result)
 	} else {
 		n.BlockDenialChannel <- &message.Block
 	}

@@ -136,17 +136,17 @@ func (v *Validator) ValidateBlocks() {
 func (v *Validator) ApproveBlock() {
 	for {
 		approvedBlock := <-v.BlockApprovalChannel
+		log.Printf("Block with hash %s received to approve", approvedBlock.GetHashString())
 		if v.VerifyBlock(approvedBlock) {
 			err := v.AddBlockToChain(approvedBlock)
 			if err != nil {
 				log.Fatalln(err)
 			}
 			v.ActualizeNodeData(approvedBlock)
-			log.Printf("Successfully added block with hash %s", approvedBlock.GetHashString())
 			v.ApprovalResponseChan <- true
+		} else {
+			v.ApprovalResponseChan <- false
 		}
-		log.Println("Block approval failed")
-		v.ApprovalResponseChan <- false
 	}
 }
 
@@ -238,6 +238,9 @@ func (v *Validator) VerifyBlock(block *blk.Block) bool {
 	if block.Header.Previous != v.Blockchain.GetLastBlockHash() || len(block.Body.Transactions) > MaxTransactionsInBlock {
 		return false
 	}
+
+	log.Println("My pubKey: ", v.KeyPair.PublicToBytes())
+	log.Println("Validators pubKeys: ", v.IndexedData.AccountManager.ValidatorPubKeys)
 
 	v.IndexedData.Mutex.Lock()
 	defer v.IndexedData.Mutex.Unlock()
