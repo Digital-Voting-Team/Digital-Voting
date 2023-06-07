@@ -10,6 +10,7 @@ import (
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/keys"
 	ss "github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/signatures/single_signature"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator"
+	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/repository/indexed_votings"
 	"github.com/gorilla/websocket"
 	"log"
 	"math"
@@ -65,6 +66,9 @@ type NetworkNode struct {
 	TransactionChannel         chan<- tx.ITransaction
 	TransactionResponseChannel <-chan bool
 
+	VotingsChannel   <-chan []indexed_votings.VotingDTO
+	PublicKeyChannel chan<- keys.PublicKeyBytes
+
 	NodeList    []string
 	MyPublicKey keys.PublicKeyBytes
 	Mutex       sync.Mutex
@@ -82,6 +86,8 @@ func NewNetworkNode(
 	validatorKeysChan chan<- []keys.PublicKeyBytes,
 	transactionChannel chan<- tx.ITransaction,
 	transactionResponseChannel <-chan bool,
+	votingsChannel <-chan []indexed_votings.VotingDTO,
+	publicKeyChannel chan<- keys.PublicKeyBytes,
 	validatorPublicKey keys.PublicKeyBytes,
 ) *NetworkNode {
 	nn := &NetworkNode{
@@ -92,6 +98,8 @@ func NewNetworkNode(
 		BlockResponseChannel:       blockResponseChan,
 		TransactionChannel:         transactionChannel,
 		TransactionResponseChannel: transactionResponseChannel,
+		PublicKeyChannel:           publicKeyChannel,
+		VotingsChannel:             votingsChannel,
 
 		ValidatorKeysChannel: validatorKeysChan,
 
@@ -106,6 +114,7 @@ func NewNetworkNode(
 	http.HandleFunc("/update", nn.HandleWebSocketUpdateNodeList)
 	http.HandleFunc("/ping", nn.HandleWebSocketPing)
 	http.HandleFunc("/transaction", nn.HandleWebSocketNewTransaction)
+	http.HandleFunc("/get_votings", nn.HandleWebSocketGetVotings)
 
 	go func() {
 		for {
@@ -438,14 +447,58 @@ func (n *NetworkNode) addNewTransaction(conn *websocket.Conn) {
 		return
 	}
 
-	//log.Printf("Received new transaction %v\nTxHash: %s", transaction, transaction.GetHashString())
+	log.Printf("Received new transaction with hash: %s", transaction.GetHashString())
 	n.TransactionChannel <- transaction
 	success := <-n.TransactionResponseChannel
-	//log.Printf("Transaction with hash %s\nVerification status: %v", transaction, success)
+	log.Printf("Transaction with hash %s Verification status: %v", transaction, success)
 
 	err = conn.WriteJSON(struct {
 		Response bool `json:"response"`
 	}{Response: success})
+	if err != nil {
+		log.Println("Error writing response")
+		return
+	}
+}
+
+func (n *NetworkNode) HandleWebSocketGetVotings(w http.ResponseWriter, r *http.Request) {
+	conn, err := n.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("WebSocket upgrade failed:", err)
+		return
+	}
+	defer func(conn *websocket.Conn) {
+		err = conn.Close()
+		if err != nil {
+			log.Println("Error closing connection:", err)
+		}
+	}(conn)
+
+	n.getVotings(conn)
+}
+
+func (n *NetworkNode) getVotings(conn *websocket.Conn) {
+	_, message, err := conn.ReadMessage()
+	if err != nil {
+		log.Println("read in getVotings:", err)
+		return
+	}
+
+	publicKeyStruct := &struct {
+		PublicKey keys.PublicKeyBytes `json:"public_key"`
+	}{}
+	err = json.Unmarshal(message, &publicKeyStruct)
+	if err != nil {
+		log.Println("Error unmarshalling getVotingsRequest")
+		return
+	}
+
+	n.PublicKeyChannel <- publicKeyStruct.PublicKey
+	votings := <-n.VotingsChannel
+
+	err = conn.WriteJSON(struct {
+		Votings []indexed_votings.VotingDTO `json:"votings"`
+	}{Votings: votings})
 	if err != nil {
 		log.Println("Error writing response")
 		return

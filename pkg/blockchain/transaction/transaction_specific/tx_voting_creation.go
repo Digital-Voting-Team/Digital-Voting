@@ -93,11 +93,11 @@ func (tx *TxVotingCreation) Verify(indexedData *repository.IndexedData, publicKe
 }
 
 func (tx *TxVotingCreation) ActualizeIndexedData(indexedData *repository.IndexedData) {
-	indexedData.VotingManager.AddNewVoting(*indexed_votings.NewVotingDTO(
-		tx.GetHash(),
-		tx.ExpirationDate,
-		tx.VotingDescription,
-		tx.Answers,
-		tx.Whitelist,
-	))
+	indexedData.VotingManager.AddNewVoting(indexed_votings.VotingDTO{
+		Hash:              tx.GetHash(),
+		ExpirationDate:    tx.ExpirationDate,
+		VotingDescription: tx.VotingDescription,
+		Answers:           tx.Answers,
+		Whitelist:         tx.Whitelist,
+	})
 }

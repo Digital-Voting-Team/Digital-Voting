@@ -61,7 +61,7 @@ func (tx *TxVote) CheckPublicKeyByRole(indexedData *repository.IndexedData, publ
 	}
 
 	whiteList := indexedData.VotingManager.GetVoting(tx.VotingLink).Whitelist
-	for identifier, _ := range whiteList {
+	for _, identifier := range whiteList {
 		if indexedData.GroupManager.IsGroupMember(identifier, publicKey) || identifier == publicKey {
 			return true
 		}

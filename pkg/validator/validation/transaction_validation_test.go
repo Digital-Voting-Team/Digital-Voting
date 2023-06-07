@@ -69,13 +69,13 @@ func TestValidateTransaction(t *testing.T) {
 	txSigner.SignTransaction(keyPair1, txVotingCreation)
 
 	castedTxVotingCreationBody := txVotingCreation.TxBody.(*ts.TxVotingCreation)
-	indexedData.VotingManager.AddNewVoting(*indexed_votings.NewVotingDTO(
-		txGroupCreation.GetHash(),
-		castedTxVotingCreationBody.ExpirationDate,
-		castedTxVotingCreationBody.VotingDescription,
-		castedTxVotingCreationBody.Answers,
-		castedTxVotingCreationBody.Whitelist,
-	))
+	indexedData.VotingManager.AddNewVoting(indexed_votings.VotingDTO{
+		Hash:              txGroupCreation.GetHash(),
+		ExpirationDate:    castedTxVotingCreationBody.ExpirationDate,
+		VotingDescription: castedTxVotingCreationBody.VotingDescription,
+		Answers:           castedTxVotingCreationBody.Answers,
+		Whitelist:         castedTxVotingCreationBody.Whitelist,
+	})
 
 	voteBody := ts.NewTxVote(txGroupCreation.GetHash(), 0)
 	txVote := tx.NewTransaction(tx.Vote, voteBody)

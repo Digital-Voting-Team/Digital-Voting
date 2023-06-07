@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-// IndexedData TODO: move functions with Node here instead of elsewhere
+// IndexedData TODO: move functions with IndexedData here instead of elsewhere
 type IndexedData struct {
 	AccountManager *account_manager.AccountManager
 	GroupManager   *indexed_groups.GroupManager

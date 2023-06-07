@@ -9,6 +9,7 @@ import (
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/connections/web_socket/network_node"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/repository/account_manager"
+	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/repository/indexed_votings"
 )
 
 func main() {
@@ -21,6 +22,8 @@ func main() {
 	blockResponseChan := make(chan validator.ResponseMessage)
 	txResponseChan := make(chan bool)
 	validatorKeysChan := make(chan []keys.PublicKeyBytes)
+	votingsChan := make(chan []indexed_votings.VotingDTO)
+	pubKeyChan := make(chan keys.PublicKeyBytes)
 	bc := &blockchain.Blockchain{}
 	_ = bc.AddBlock(&block.Block{})
 
@@ -35,6 +38,8 @@ func main() {
 		txResponseChan,
 		blockResponseChan,
 		validatorKeysChan,
+		votingsChan,
+		pubKeyChan,
 	)
 	pubKey := v.KeyPair.PublicToBytes()
 
@@ -48,13 +53,15 @@ func main() {
 		validatorKeysChan,
 		transactionChan,
 		txResponseChan,
+		votingsChan,
+		pubKeyChan,
 		pubKey,
 	)
 
 	keyPair := keys.FromPrivateKey(keys.PrivateKeyBytes{1}, curve.NewCurve25519())
-	v.Node.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.RegistrationAdmin)
-	v.Node.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.VotingCreationAdmin)
-	v.Node.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.User)
+	v.IndexedData.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.RegistrationAdmin)
+	v.IndexedData.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.VotingCreationAdmin)
+	v.IndexedData.AccountManager.AddPubKey(keyPair.PublicToBytes(), account_manager.User)
 
 	_ = nn.Start(":8080")
 }

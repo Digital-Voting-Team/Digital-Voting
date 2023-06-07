@@ -29,7 +29,7 @@ type ResponseMessage struct {
 type Validator struct {
 	KeyPair     *keys.KeyPair
 	MemPool     *MemPool
-	Node        *repository.IndexedData
+	IndexedData *repository.IndexedData
 	BlockSigner *signer.BlockSigner
 	Blockchain  *blockchain.Blockchain
 
@@ -45,6 +45,9 @@ type Validator struct {
 	BlockResponseChannel chan<- ResponseMessage
 
 	ValidatorKeysChannel <-chan []keys.PublicKeyBytes
+
+	VotingsChannel   chan<- []indexed_votings.VotingDTO
+	PublicKeyChannel <-chan keys.PublicKeyBytes
 }
 
 func NewValidator(
@@ -58,6 +61,8 @@ func NewValidator(
 	txResponseChan chan<- bool,
 	blockResponseChan chan<- ResponseMessage,
 	validatorKeysChan <-chan []keys.PublicKeyBytes,
+	votingsChan chan<- []indexed_votings.VotingDTO,
+	publicKeyChan <-chan keys.PublicKeyBytes,
 ) *Validator {
 	validatorKeys, err := keys.Random(curve.NewCurve25519())
 	if err != nil {
@@ -66,7 +71,7 @@ func NewValidator(
 	v := &Validator{
 		KeyPair:              validatorKeys,
 		MemPool:              NewMemPool(),
-		Node:                 repository.NewIndexedData(),
+		IndexedData:          repository.NewIndexedData(),
 		BlockSigner:          signer.NewBlockSigner(),
 		Blockchain:           bc,
 		NetworkToValidator:   netToValChan,
@@ -78,6 +83,8 @@ func NewValidator(
 		BlockResponseChannel: blockResponseChan,
 		TxResponseChannel:    txResponseChan,
 		ValidatorKeysChannel: validatorKeysChan,
+		VotingsChannel:       votingsChan,
+		PublicKeyChannel:     publicKeyChan,
 	}
 
 	v.StartRoutines()
@@ -92,6 +99,7 @@ func (v *Validator) StartRoutines() {
 	go v.DenyBlock()
 	go v.UpdateValidatorKeys()
 	go v.AddNewTransaction()
+	go v.GetVotingsForPubKey()
 }
 
 // ValidateBlocks wait for blocks from channel and validate them
@@ -143,13 +151,13 @@ func (v *Validator) DenyBlock() {
 
 func (v *Validator) RestoreMemPool(transactions []tx.ITransaction) {
 	transactionsToRestore := transactions
-	v.Node.Mutex.Lock()
+	v.IndexedData.Mutex.Lock()
 	for _, transaction := range transactions {
-		if transaction.Verify(v.Node) {
+		if transaction.Verify(v.IndexedData) {
 			transactionsToRestore = append(transactionsToRestore, transaction)
 		}
 	}
-	v.Node.Mutex.Unlock()
+	v.IndexedData.Mutex.Unlock()
 	v.MemPool.RestoreMemPool(transactionsToRestore)
 }
 
@@ -173,9 +181,9 @@ func (v *Validator) CreateAndSendBlock() {
 }
 
 func (v *Validator) AddToMemPool(newTransaction tx.ITransaction) bool {
-	v.Node.Mutex.Lock()
-	response := newTransaction.CheckOnCreate(v.Node)
-	v.Node.Mutex.Unlock()
+	v.IndexedData.Mutex.Lock()
+	response := newTransaction.CheckOnCreate(v.IndexedData)
+	v.IndexedData.Mutex.Unlock()
 	if response {
 		response = v.MemPool.AddToMemPool(newTransaction)
 	}
@@ -222,9 +230,9 @@ func (v *Validator) VerifyBlock(block *blk.Block) bool {
 		return false
 	}
 
-	v.Node.Mutex.Lock()
-	defer v.Node.Mutex.Unlock()
-	return block.Verify(v.Node)
+	v.IndexedData.Mutex.Lock()
+	defer v.IndexedData.Mutex.Unlock()
+	return block.Verify(v.IndexedData)
 }
 
 func (v *Validator) AddBlockToChain(block *blk.Block) error {
@@ -236,12 +244,12 @@ type IndexedDataActualizer interface {
 }
 
 func (v *Validator) ActualizeNodeData(block *blk.Block) {
-	v.Node.Mutex.Lock()
-	defer v.Node.Mutex.Unlock()
+	v.IndexedData.Mutex.Lock()
+	defer v.IndexedData.Mutex.Unlock()
 	for _, transaction := range block.Body.Transactions {
 		txExact, ok := transaction.GetTxBody().(IndexedDataActualizer)
 		if ok {
-			txExact.ActualizeIndexedData(v.Node)
+			txExact.ActualizeIndexedData(v.IndexedData)
 		}
 	}
 }
@@ -249,12 +257,12 @@ func (v *Validator) ActualizeNodeData(block *blk.Block) {
 func (v *Validator) UpdateValidatorKeys() {
 	for {
 		newValidatorKeys := <-v.ValidatorKeysChannel
-		v.Node.Mutex.Lock()
-		v.Node.AccountManager.ValidatorPubKeys = map[keys.PublicKeyBytes]struct{}{}
+		v.IndexedData.Mutex.Lock()
+		v.IndexedData.AccountManager.ValidatorPubKeys = map[keys.PublicKeyBytes]struct{}{}
 		for _, key := range newValidatorKeys {
-			v.Node.AccountManager.AddPubKey(key, account_manager.Validator)
+			v.IndexedData.AccountManager.AddPubKey(key, account_manager.Validator)
 		}
-		v.Node.Mutex.Unlock()
+		v.IndexedData.Mutex.Unlock()
 	}
 }
 
@@ -269,25 +277,29 @@ func (v *Validator) AddNewTransaction() {
 	}
 }
 
-func (v *Validator) GetVotingsForPubKey(publicKey keys.PublicKeyBytes) []indexed_votings.VotingDTO {
-	result := []indexed_votings.VotingDTO{}
+func (v *Validator) GetVotingsForPubKey() {
+	for {
+		pubKey := <-v.PublicKeyChannel
 
-	votings := v.Node.VotingManager.IndexedVotings
+		result := []indexed_votings.VotingDTO{}
 
-	for _, voting := range votings {
-		flag := false
-		whiteList := voting.Whitelist
-		for identifier := range whiteList {
-			if v.Node.GroupManager.IsGroupMember(identifier, publicKey) || identifier == publicKey {
-				result = append(result, voting)
-				flag = true
-				break
+		votings := v.IndexedData.VotingManager.IndexedVotings
+
+		for _, voting := range votings {
+			flag := false
+			whiteList := voting.Whitelist
+			for _, identifier := range whiteList {
+				if v.IndexedData.GroupManager.IsGroupMember(identifier, pubKey) || identifier == pubKey {
+					result = append(result, voting)
+					flag = true
+					break
+				}
+			}
+			if flag {
+				continue
 			}
 		}
-		if flag {
-			continue
-		}
-	}
 
-	return result
+		v.VotingsChannel <- result
+	}
 }

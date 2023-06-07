@@ -17,7 +17,7 @@ import (
 )
 
 func TestIsInMemPool(t *testing.T) {
-	v := &Validator{MemPool: NewMemPool(), Node: nd.NewIndexedData()}
+	v := &Validator{MemPool: NewMemPool(), IndexedData: nd.NewIndexedData()}
 
 	groupName := "EPS-41"
 	membersPublicKeys := []keys.PublicKeyBytes{}
@@ -106,7 +106,7 @@ func TestCreateBlock(t *testing.T) {
 	validator := &Validator{
 		MemPool:     NewMemPool(),
 		KeyPair:     keyPair1,
-		Node:        indexedData,
+		IndexedData: indexedData,
 		BlockSigner: signer.NewBlockSigner(),
 	}
 	validator.AddToMemPool(txAccountCreation)
@@ -168,7 +168,7 @@ func TestActualizeIdentityProvider(t *testing.T) {
 	validator := &Validator{
 		MemPool:     NewMemPool(),
 		KeyPair:     validatorKeyPair,
-		Node:        indexedData,
+		IndexedData: indexedData,
 		BlockSigner: signer.NewBlockSigner(),
 	}
 
@@ -245,7 +245,7 @@ func TestVerifyBlock(t *testing.T) {
 	validator := &Validator{
 		MemPool:     NewMemPool(),
 		KeyPair:     validatorKeyPair,
-		Node:        indexedData,
+		IndexedData: indexedData,
 		BlockSigner: signer.NewBlockSigner(),
 		Blockchain:  &blockchain.Blockchain{Blocks: []*blk.Block{{}}},
 	}
