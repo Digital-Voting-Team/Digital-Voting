@@ -198,9 +198,6 @@ func (v *Validator) VerifyBlock(block *blk.Block) bool {
 		return false
 	}
 
-	log.Println("My pubKey: ", v.KeyPair.PublicToBytes())
-	log.Println("Validators pubKeys: ", v.IndexedData.AccountManager.ValidatorPubKeys)
-
 	v.IndexedData.Mutex.Lock()
 	defer v.IndexedData.Mutex.Unlock()
 	return block.Verify(v.IndexedData)

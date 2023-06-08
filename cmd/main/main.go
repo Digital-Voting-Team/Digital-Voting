@@ -13,30 +13,18 @@ import (
 )
 
 func main() {
-	netToValChan := make(chan *block.Block)
-	valToNetChan := make(chan *block.Block)
-	blockApprovalChan := make(chan *block.Block)
-	approvalResponseChan := make(chan bool)
-	blockDenialChan := make(chan *block.Block)
-	transactionChan := make(chan tx.ITransaction)
-	blockResponseChan := make(chan validator.ResponseMessage)
-	txResponseChan := make(chan bool)
-	validatorKeysChan := make(chan []keys.PublicKeyBytes)
-	votingsChan := make(chan []indexed_votings.VotingDTO)
-	pubKeyChan := make(chan keys.PublicKeyBytes)
-
 	channels := validator.Communication{
-		NetworkToValidator: netToValChan,
-		ValidatorToNetwork: valToNetChan,
-		BlockResponse:      blockResponseChan,
-		BlockApproval:      blockApprovalChan,
-		ApprovalResponse:   approvalResponseChan,
-		BlockDenial:        blockDenialChan,
-		Transaction:        transactionChan,
-		TxResponse:         txResponseChan,
-		ValidatorKeys:      validatorKeysChan,
-		Votings:            votingsChan,
-		PublicKey:          pubKeyChan,
+		NetworkToValidator: make(chan *block.Block),
+		ValidatorToNetwork: make(chan *block.Block),
+		BlockResponse:      make(chan validator.ResponseMessage),
+		BlockApproval:      make(chan *block.Block),
+		ApprovalResponse:   make(chan bool),
+		BlockDenial:        make(chan *block.Block),
+		Transaction:        make(chan tx.ITransaction),
+		TxResponse:         make(chan bool),
+		ValidatorKeys:      make(chan []keys.PublicKeyBytes),
+		Votings:            make(chan []indexed_votings.VotingDTO),
+		PublicKey:          make(chan keys.PublicKeyBytes),
 	}
 
 	bc := &blockchain.Blockchain{}
