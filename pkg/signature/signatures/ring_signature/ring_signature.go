@@ -4,19 +4,19 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
-	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/curve"
-	keys2 "github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/keys"
+	crv "github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/curve"
+	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/keys"
 	"log"
 	"math/big"
 )
 
 type ECDSA_RS struct {
-	GenPoint *curve.Point
-	Curve    *curve.MontgomeryCurve
+	GenPoint *crv.Point
+	Curve    *crv.MontgomeryCurve
 }
 
 func NewECDSA_RS() *ECDSA_RS {
-	curve := curve.NewCurve25519()
+	curve := crv.NewCurve25519()
 	return &ECDSA_RS{
 		GenPoint: curve.G(),
 		Curve:    curve,
@@ -26,19 +26,15 @@ func NewECDSA_RS() *ECDSA_RS {
 // RingSignature
 // https://bytecoin.org/old/whitepaper.pdf
 type RingSignature struct {
-	KeyImage *curve.Point `json:"key_image"`
-	CList    []*big.Int   `json:"c_list"`
-	RList    []*big.Int   `json:"r_list"`
+	KeyImage *crv.Point `json:"key_image"`
+	CList    []*big.Int `json:"c_list"`
+	RList    []*big.Int `json:"r_list"`
 }
 
 type RingSignatureBytes [][65]byte
 type KeyImageBytes [33]byte
 
 func (rs *RingSignature) SignatureToBytes() (RingSignatureBytes, KeyImageBytes) {
-	// result[i][0] -> version
-	// result[i][1:32] -> CList[i]
-	// result[i][32:] -> RList[i]
-
 	result := make(RingSignatureBytes, len(rs.CList))
 
 	for i := 0; i < len(result); i++ {
@@ -51,7 +47,7 @@ func (rs *RingSignature) SignatureToBytes() (RingSignatureBytes, KeyImageBytes) 
 
 func BytesToSignature(data RingSignatureBytes, keyImage KeyImageBytes) *RingSignature {
 	rs := &RingSignature{
-		KeyImage: curve.BytesToPoint(curve.PointCompressed(keyImage), curve.NewCurve25519()),
+		KeyImage: crv.BytesToPoint(crv.PointCompressed(keyImage), crv.NewCurve25519()),
 		CList:    []*big.Int{},
 		RList:    []*big.Int{},
 	}
@@ -65,29 +61,26 @@ func BytesToSignature(data RingSignatureBytes, keyImage KeyImageBytes) *RingSign
 	return rs
 }
 
-func (ec *ECDSA_RS) SignBytes(message string, privateKey keys2.PrivateKeyBytes, publicKey keys2.PublicKeyBytes, publicKeys []keys2.PublicKeyBytes, s int) (*RingSignature, error) {
-	keyPair := new(keys2.KeyPair)
+func (ec *ECDSA_RS) SignBytes(message string, privateKey keys.PrivateKeyBytes, publicKey keys.PublicKeyBytes, publicKeys []keys.PublicKeyBytes, s int) (*RingSignature, error) {
+	keyPair := new(keys.KeyPair)
 	keyPair.BytesToPrivate(privateKey)
 	keyPair.BytesToPublic(publicKey)
 
-	pubKeys := make([]*curve.Point, len(publicKeys))
+	pubKeys := make([]*crv.Point, len(publicKeys))
 	for i, pKey := range publicKeys {
-		pubKeys[i] = curve.BytesToPoint(curve.PointCompressed(pKey), ec.Curve)
+		pubKeys[i] = crv.BytesToPoint(crv.PointCompressed(pKey), ec.Curve)
 	}
 
 	return ec.Sign(message, keyPair, pubKeys, s)
 }
 
-func (ec *ECDSA_RS) Sign(message string, keyPair keys2.KP, publicKeys []*curve.Point, s int) (*RingSignature, error) {
-	// Define the size of the ring of public keys that will be used in signing
+func (ec *ECDSA_RS) Sign(message string, keyPair keys.KP, publicKeys []*crv.Point, s int) (*RingSignature, error) {
 	numberOfPKeys := len(publicKeys)
 
 	if s < 0 || s >= numberOfPKeys {
 		return nil, fmt.Errorf("wrong index of personal key")
 	}
 
-	// Pick random c[i] and r[i] from interval [1...N), i from 0 to n-1 inclusive, where n is size of the ring
-	// N is the prime order of the base point of the curve
 	cList := make([]*big.Int, numberOfPKeys)
 	rList := make([]*big.Int, numberOfPKeys)
 
@@ -103,23 +96,11 @@ func (ec *ECDSA_RS) Sign(message string, keyPair keys2.KP, publicKeys []*curve.P
 		}
 	}
 
-	// This 2 arrays of elliptic curve points will be calculated in cycle and used in hash calculation
-	var lArray []*curve.Point
-	var rArray []*curve.Point
+	var lArray []*crv.Point
+	var rArray []*crv.Point
 
-	// Calculating so-called key image which identifies the key pair of signer
 	keyImage := keyPair.GetKeyImage()
 
-	// lArray[i] = |r[i]*G, if i==s
-	//			   |r[i]*G + c[i]*P[i], else
-	// G is base point of the curve,
-	// s is signer's public key's ordinal number in the ring,
-	// P[i] is i-th public key in the ring.
-	//
-	// rArray[i] = |r[i]*H_p(P[i]), if i==s
-	//			   |r[i]*H_p(P[i]) + c[i]*I, else
-	// H_p(P[i]) is deterministic hash-function (Point on curve -> Point on curve) of i-th public key in the ring,
-	// I is previously calculated key image.
 	for i := 0; i < numberOfPKeys; i++ {
 		rI := new(big.Int).Set(rList[i])
 
@@ -133,8 +114,6 @@ func (ec *ECDSA_RS) Sign(message string, keyPair keys2.KP, publicKeys []*curve.P
 			log.Panicln(err)
 		}
 
-		// lArray[i] = r[i]*G, if i==s
-		// rArray[i] = r[i]*H_p(P[i]), if i==s
 		if i == s {
 			lArray = append(lArray, rG)
 			rArray = append(rArray, rH)
@@ -163,33 +142,22 @@ func (ec *ECDSA_RS) Sign(message string, keyPair keys2.KP, publicKeys []*curve.P
 			log.Panicln(err)
 		}
 
-		// lArray[i] = r[i]*G + c[i]*P[i], else
-		// rArray[i] = r[i]*H_p(P[i]) + c[i]*I, else
 		lArray = append(lArray, rGcP)
 		rArray = append(rArray, rHcI)
 	}
 
-	// Calculate non-interactive challenge with use of message and 2 previously calculated arrays
 	hash := getHash(message, lArray, rArray)
-	// Get *Int from this challenge
 	c := new(big.Int).SetBytes(hash[:])
 
-	// Calculate sum from 0 to ring size exclusive of c[i]
 	sum := new(big.Int)
 	for i := 0; i < numberOfPKeys; i++ {
 		if i != s {
 			sum = new(big.Int).Add(sum, cList[i])
 		}
 	}
-	// Get private key as copy in *Int data type
+
 	pKey := new(big.Int).Set(keyPair.GetPrivateKey())
 
-	// c[s] = (c - sum) mod N
-	// c is previously calculated non-interactive challenge,
-	// N is the prime order of the base point of the curve.
-	//
-	// r[s] = r[s] - c[s]*pKey
-	// pKey is the signer's private key
 	cList[s] = new(big.Int).Mod(new(big.Int).Sub(c, sum), ec.Curve.N)
 	rList[s] = new(big.Int).Mod(new(big.Int).Sub(rList[s], new(big.Int).Mul(cList[s], pKey)), ec.Curve.N)
 
@@ -200,10 +168,10 @@ func (ec *ECDSA_RS) Sign(message string, keyPair keys2.KP, publicKeys []*curve.P
 	}, nil
 }
 
-func (ec *ECDSA_RS) VerifyBytes(message string, publicKeys []keys2.PublicKeyBytes, signature RingSignatureBytes, keyImage KeyImageBytes) bool {
-	pubKeys := make([]*curve.Point, len(publicKeys))
+func (ec *ECDSA_RS) VerifyBytes(message string, publicKeys []keys.PublicKeyBytes, signature RingSignatureBytes, keyImage KeyImageBytes) bool {
+	pubKeys := make([]*crv.Point, len(publicKeys))
 	for i, pKey := range publicKeys {
-		pubKeys[i] = curve.BytesToPoint(curve.PointCompressed(pKey), ec.Curve)
+		pubKeys[i] = crv.BytesToPoint(crv.PointCompressed(pKey), ec.Curve)
 	}
 
 	sig := BytesToSignature(signature, keyImage)
@@ -211,24 +179,14 @@ func (ec *ECDSA_RS) VerifyBytes(message string, publicKeys []keys2.PublicKeyByte
 	return ec.Verify(message, pubKeys, sig)
 }
 
-func (ec *ECDSA_RS) Verify(message string, publicKeys []*curve.Point, sig *RingSignature) bool {
-	// Define the size of the ring of public keys that will be used in signatures
+func (ec *ECDSA_RS) Verify(message string, publicKeys []*crv.Point, sig *RingSignature) bool {
 	numberOfPKeys := len(publicKeys)
 
-	// This 2 arrays of elliptic curve points will be calculated in cycle and used in hash calculation
-	var newLArray []*curve.Point
-	var newRArray []*curve.Point
+	var newLArray []*crv.Point
+	var newRArray []*crv.Point
 
-	// A sum of c[i] in cList store in signatures data structure (will be calculated)
 	cExpected := new(big.Int)
 
-	// newLArray[i] = r[i]*G + c[i]*P[i]
-	// G is base point of the curve,
-	// P[i] is i-th public key in the ring.
-	//
-	// newRArray[i] = r[i]*H_p(P[i]) + c[i]*I
-	// H_p(P[i]) is deterministic hash-function (Point on curve -> Point on curve) of i-th public key in the ring,
-	// I is previously calculated key image.
 	for i := 0; i < numberOfPKeys; i++ {
 		rI := new(big.Int).Set(sig.RList[i])
 
@@ -270,19 +228,13 @@ func (ec *ECDSA_RS) Verify(message string, publicKeys []*curve.Point, sig *RingS
 		cExpected = new(big.Int).Mod(new(big.Int).Add(cExpected, sig.CList[i]), ec.Curve.N)
 	}
 
-	// Calculate non-interactive challenge with use of message and 2 previously calculated arrays
 	hash := getHash(message, newLArray, newRArray)
-	// Get *Int from this challenge, mod N
-	// N is the prime order of the base point of the curve.
 	cReal := new(big.Int).Mod(new(big.Int).SetBytes(hash[:]), ec.Curve.N)
 
-	// Compare the value got as sum of c[i] from signatures data structure
-	// and the value calculated as non-interactive challenge.
-	// Verification must not pass if values are different.
 	return cReal.Cmp(cExpected) == 0
 }
 
-func getHash(message string, lArray, rArray []*curve.Point) [32]byte {
+func getHash(message string, lArray, rArray []*crv.Point) [32]byte {
 	messageToHash := message
 
 	for i := 0; i < len(lArray); i++ {

@@ -175,5 +175,3 @@ func (c *Curve) ConvertToMontgomeryCurve() *MontgomeryCurve {
 		*c,
 	}
 }
-
-// TODO: encode and decode functions

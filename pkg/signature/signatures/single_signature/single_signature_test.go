@@ -212,3 +212,149 @@ func TestSignatureToBytes(t *testing.T) {
 		})
 	}
 }
+
+func TestVerifyEdDSA(t *testing.T) {
+	sign := NewECDSA()
+	keyPair1, err := keys.Random(sign.Curve)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	keyPair2, err := keys.Random(sign.Curve)
+	if err != nil {
+		log.Panicln(err)
+	}
+	pk1 := keyPair1.GetPrivateKey()
+	pbk1 := keyPair1.GetPublicKey()
+
+	pk2 := keyPair2.GetPrivateKey()
+	pbk2 := keyPair2.GetPublicKey()
+
+	msg := "String ...."
+	msg2 := "String2 ...."
+	signature1 := sign.SignEdDSA(msg, pk1, pbk1)
+	signature2 := sign.SignEdDSA(msg, pk2, pbk2)
+	type fields struct {
+		GenPoint *curve2.Point
+		Curve    *curve2.MontgomeryCurve
+	}
+	type args struct {
+		publicKey *curve2.Point
+		message   string
+		signature *EdwardsSignature
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		{
+			name: "Should verify (pk1, pbk1, correct message)",
+			args: args{
+				publicKey: pbk1,
+				message:   msg,
+				signature: signature1,
+			},
+			want: true,
+		},
+		{
+			name: "Should not verify (pk1, pbk1, incorrect message)",
+			args: args{
+				publicKey: pbk1,
+				message:   msg2,
+				signature: signature1,
+			},
+			want: false,
+		},
+		{
+			name: "Should not verify (pk1, pbk2, correct message)",
+			args: args{
+				publicKey: pbk2,
+				message:   msg,
+				signature: signature1,
+			},
+			want: false,
+		},
+		{
+			name: "Should verify (pk2, pbk2, correct message)",
+			args: args{
+				publicKey: pbk2,
+				message:   msg,
+				signature: signature2,
+			},
+			want: true,
+		},
+		{
+			name: "Should not verify (pk2, pbk2, incorrect message)",
+			args: args{
+				publicKey: pbk2,
+				message:   msg2,
+				signature: signature2,
+			},
+			want: false,
+		},
+		{
+			name: "Should not verify (pk2, pbk1, correct message)",
+			args: args{
+				publicKey: pbk1,
+				message:   msg,
+				signature: signature2,
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sign.VerifyEdDSA(tt.args.message, tt.args.publicKey, tt.args.signature); got != tt.want {
+				t.Errorf("VerifyEdDSA() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEdwardsToSingleSignature(t *testing.T) {
+	sign := NewECDSA()
+	keyPair1, err := keys.Random(sign.Curve)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	pk1 := keyPair1.GetPrivateKey()
+	pbk1 := keyPair1.GetPublicKey()
+
+	msg := "String ...."
+	edsignature := sign.SignEdDSA(msg, pk1, pbk1)
+	singlesig := sign.EdwardsToSingleSignature(edsignature)
+
+	type fields struct {
+		GenPoint *curve2.Point
+		Curve    *curve2.MontgomeryCurve
+	}
+	type args struct {
+		ssignature *SingleSignature
+		esignature *EdwardsSignature
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		{
+			name: "Should verify (pk1, pbk1, correct message)",
+			args: args{
+				ssignature: singlesig,
+				esignature: edsignature,
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sign.SingleToEdwardsSignature(tt.args.ssignature).Eq(edsignature); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("EdwardsToSingleSignature() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
