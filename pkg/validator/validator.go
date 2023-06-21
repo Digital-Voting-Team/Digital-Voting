@@ -103,6 +103,7 @@ func (v *Validator) ApproveBlock() {
 			}
 			v.ActualizeNodeData(approvedBlock)
 			v.Channels.ApprovalResponse <- true
+			log.Printf("Block with hash %s added", approvedBlock.GetHashString())
 		} else {
 			v.Channels.ApprovalResponse <- false
 		}
@@ -237,6 +238,7 @@ func (v *Validator) UpdateValidatorKeys() {
 func (v *Validator) AddNewTransaction() {
 	for {
 		newTransaction := <-v.Channels.Transaction
+		// TODO: uncomment in case of demo without administrators
 		//if newTransaction.GetTxType() == tx.AccountCreation &&
 		//	(newTransaction.(*tx.Transaction).PublicKey == keys.PublicKeyBytes{}) {
 		//	signer.NewTransactionSigner().SignTransactionWithPrivateKey(RegAdminPrivateKey, newTransaction.(*tx.Transaction))
