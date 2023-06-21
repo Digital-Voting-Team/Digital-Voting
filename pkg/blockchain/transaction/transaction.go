@@ -99,7 +99,7 @@ func (tx *Transaction) IsEqual(otherTransaction *Transaction) bool {
 func (tx *Transaction) VerifySignature() bool {
 	// TODO: think of passing this instead of creating
 	ecdsa := ss.NewECDSA()
-	return ecdsa.VerifyBytes(
+	return ecdsa.VerifyEdDSABytes(
 		tx.GetSignatureMessage(),
 		tx.PublicKey,
 		tx.Signature,
