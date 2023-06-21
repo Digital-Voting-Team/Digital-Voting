@@ -28,15 +28,14 @@ func (mc *MontgomeryCurve) addPoint(P, Q *Point) *Point {
 	// s = (yP - yQ) / (xP - xQ)
 	// xR = b * s^2 - a - xP - xQ
 	// yR = yP + s * (xR - xP)
-	deltaX := new(big.Int).Sub(P.X, Q.X) // *P.X - *Q.X
+	deltaX := new(big.Int).Sub(P.X, Q.X) // P.X - Q.X
 
-	deltaY := new(big.Int).Sub(P.Y, Q.Y) // *P.Y - *Q.Y
-	// modInv, err := Modinv(deltaX, *mc.P)
+	deltaY := new(big.Int).Sub(P.Y, Q.Y) // P.Y - Q.Y
 	modInv := new(big.Int).ModInverse(deltaX, mc.P)
 
 	s := new(big.Int).Mul(deltaY, modInv) // deltaY * modInv
-	// resX := (*mc.B*s*s - *mc.A - *P.X - *Q.X) % *mc.P
-	// resY := (*P.Y + s*(resX-*P.X)) % *mc.P
+	// resX := (mc.B*s*s - mc.A - P.X - Q.X) % mc.P
+	// resY := (P.Y + s*(resX-P.X)) % mc.P
 	var (
 		resX big.Int
 		resY big.Int
@@ -51,8 +50,8 @@ func (mc *MontgomeryCurve) doublePoint(P *Point) *Point {
 	// xR = b * s^2 - a - 2 * xP
 	// yR = yP + s * (xR - xP)
 	// up := 3**P.X**P.X + 2**mc.A**P.X + 1
-	// down := 2 * *mc.B * *P.Y
-	// modInv, err := Modinv(down, *mc.P)
+	// down := 2 * mc.B * P.Y
+	// modInv, err := Modinv(down, mc.P)
 	var (
 		up     big.Int
 		down   big.Int
@@ -62,8 +61,8 @@ func (mc *MontgomeryCurve) doublePoint(P *Point) *Point {
 	down.Mul(utils.GetInt(2), mc.B).Mul(&down, P.Y)
 	modInv.ModInverse(&down, mc.P)
 	s := new(big.Int).Mul(&up, &modInv) // up * modInv
-	// resX := (*mc.B*s*s - *mc.A - 2**P.X) % *mc.P
-	// resY := (*P.Y + s*(resX-*P.X)) % *mc.P
+	// resX := (mc.B*s*s - mc.A - 2**P.X) % mc.P
+	// resY := (P.Y + s*(resX-P.X)) % mc.P
 	var (
 		resX big.Int
 		resY big.Int
@@ -74,15 +73,15 @@ func (mc *MontgomeryCurve) doublePoint(P *Point) *Point {
 }
 
 func (mc *MontgomeryCurve) negPoint(P *Point) *Point {
-	py := new(big.Int).Mod(new(big.Int).Neg(P.Y), mc.P) // -(*P.Y) % *mc.P
+	py := new(big.Int).Mod(new(big.Int).Neg(P.Y), mc.P) // -(*P.Y) % mc.P
 	return &Point{P.X, utils.Clone(py), mc}
 }
 
 func (mc *MontgomeryCurve) ComputeY(x *big.Int) *big.Int {
-	// right := (x*x*x + *mc.A*x*x + x) % *mc.P
-	// invB, err := Modinv(*mc.B, *mc.P)
-	// right = (right * invB) % *mc.P
-	// y := Modsqrt(right, *mc.P)
+	// right := (x*x*x + mc.A*x*x + x) % mc.P
+	// invB, err := Modinv(mc.B, mc.P)
+	// right = (right * invB) % mc.P
+	// y := Modsqrt(right, mc.P)
 	var (
 		right big.Int
 		invB  big.Int
@@ -124,7 +123,6 @@ func NewCurve25519() *MontgomeryCurve {
 }
 
 func (mc *MontgomeryCurve) MarshalCompressed(point *Point) PointCompressed {
-	// TODO: think of different lengths
 	compressed := PointCompressed{}
 	compressed[0] = byte(point.Y.Bit(0)) | 2
 	point.X.FillBytes(compressed[1:])
@@ -132,7 +130,6 @@ func (mc *MontgomeryCurve) MarshalCompressed(point *Point) PointCompressed {
 }
 
 func (mc *MontgomeryCurve) UnmarshalCompressed(data PointCompressed) (point *Point) {
-	// TODO: think of different lengths
 	result := &Point{nil, nil, mc}
 
 	x := new(big.Int).SetBytes(data[1:])

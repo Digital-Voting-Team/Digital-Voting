@@ -6,19 +6,15 @@ import (
 	"fmt"
 )
 
-// ErrInvalidVersionByte is returned when the version byte from a provided
-// strkey-encoded string is not one of the valid values.
 var ErrInvalidVersionByte = errors.New("invalid version byte")
 
-// VersionByte represents one of the possible prefix values for a StrKey base
-// string--the string when encoded using base32 yields a final StrKey.
 type VersionByte byte
 
 const (
-	//VersionByteAccountID is the version byte used for encoded stellar addresses
-	VersionByteAccountID VersionByte = 6 << 3 // Base32-encodes to 'G...'
+	//VersionBytePublicKey is the version byte used for encoded public keys
+	VersionBytePublicKey VersionByte = 6 << 3 // Base32-encodes to 'G...'
 
-	//VersionByteSeed is the version byte used for encoded stellar seed
+	//VersionByteSeed is the version byte used for encoded seeds
 	VersionByteSeed = 18 << 3 // Base32-encodes to 'S...'
 )
 
@@ -36,9 +32,6 @@ const maxEncodedSize = (maxRawSize*8 + 4) / 5 // (8n+4)/5 is the EncodedLen for 
 // encoding to use when encoding and decoding a strkey to and from strings.
 var encoding = base32.StdEncoding.WithPadding(base32.NoPadding)
 
-// Decode decodes the provided StrKey into a raw value, checking the checksum
-// and ensuring the expected VersionByte (the version parameter) is the value
-// actually encoded into the provided src string.
 func Decode(expected VersionByte, src string) ([]byte, error) {
 	if err := checkValidVersionByte(expected); err != nil {
 		return nil, err
@@ -64,17 +57,6 @@ func Decode(expected VersionByte, src string) ([]byte, error) {
 	return payload, nil
 }
 
-// MustDecode is like Decode, but panics on error
-func MustDecode(expected VersionByte, src string) []byte {
-	d, err := Decode(expected, src)
-	if err != nil {
-		panic(err)
-	}
-	return d
-}
-
-// Encode encodes the provided data to a StrKey, using the provided version
-// byte.
 func Encode(version VersionByte, src []byte) (string, error) {
 	if err := checkValidVersionByte(version); err != nil {
 		return "", err
@@ -102,20 +84,9 @@ func Encode(version VersionByte, src []byte) (string, error) {
 	return string(enc), nil
 }
 
-// MustEncode is like Encode, but panics on error.
-func MustEncode(version VersionByte, src []byte) string {
-	e, err := Encode(version, src)
-	if err != nil {
-		panic(err)
-	}
-	return e
-}
-
-// checkValidVersionByte returns an error if the provided value
-// is not one of the defined valid version byte constants.
 func checkValidVersionByte(version VersionByte) error {
 	switch version {
-	case VersionByteAccountID, VersionByteSeed:
+	case VersionBytePublicKey, VersionByteSeed:
 		return nil
 	default:
 		return ErrInvalidVersionByte

@@ -215,12 +215,12 @@ func TestSignatureToBytes(t *testing.T) {
 
 func TestVerifyEdDSA(t *testing.T) {
 	sign := NewECDSA()
-	keyPair1, err := keys.FromRawSeed([32]byte{1}, sign.Curve)
+	keyPair1, err := keys.Random(sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
 
-	keyPair2, err := keys.FromRawSeed([32]byte{2}, sign.Curve)
+	keyPair2, err := keys.Random(sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -315,7 +315,7 @@ func TestVerifyEdDSA(t *testing.T) {
 
 func TestEdwardsToSingleSignature(t *testing.T) {
 	sign := NewECDSA()
-	keyPair1, err := keys.FromRawSeed([32]byte{1}, sign.Curve)
+	keyPair1, err := keys.Random(sign.Curve)
 	if err != nil {
 		log.Panicln(err)
 	}

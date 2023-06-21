@@ -11,23 +11,9 @@ import (
 	"math/big"
 )
 
-const (
-	// PublicKeySize is the size, in bytes, of public keys as used in this package.
-	PublicKeySize = 32
-	// PrivateKeySize is the size, in bytes, of private keys as used in this package.
-	PrivateKeySize = 64
-	// SignatureSize is the size, in bytes, of signatures generated and verified by this package.
-	SignatureSize = 64
-	// SeedSize is the size, in bytes, of private key seeds. These are the private key representations used by RFC 8032.
-	SeedSize = 32
-)
-
 type PrivateKeyBytes [32]byte
 type PublicKeyBytes [33]byte
 
-// KeyPair represents a keys with generated on ed25519 key pair and seed
-// used for its creation. In addition, it stores address which is
-// public key representation in human-readable form.
 type KeyPair struct {
 	address    string
 	seed       string
@@ -96,12 +82,6 @@ func (kp *KeyPair) Hint() (r [4]byte) {
 	return
 }
 
-// FromAddress gets the address-only representation, or public key, of this
-// KeyPair keys.
-func (kp *KeyPair) FromAddress() (*FromAddress, error) {
-	return newFromAddress(kp.address)
-}
-
 // Equal compares two KeyPair instances.
 func (kp *KeyPair) Equal(f *KeyPair) bool {
 	if kp == nil && f == nil {
@@ -124,11 +104,7 @@ func newKeyPair(seed string, curve curve2.ICurve) (*KeyPair, error) {
 	public := getPublicKey(private, curve)
 
 	publicBytes := public.X.Bytes()
-	// TODO think about better way to fill address
-	//xBytes := public.X.Bytes()
-	//yBytes := public.Y.Bytes()
-	//publicBytes := append(xBytes, yBytes...)
-	address, err := strkey.Encode(strkey.VersionByteAccountID, publicBytes)
+	address, err := strkey.Encode(strkey.VersionBytePublicKey, publicBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -153,11 +129,7 @@ func newKeyPairFromRawSeed(rawSeed [32]byte, curve curve2.ICurve) (*KeyPair, err
 	public := getPublicKey(private, curve)
 
 	publicBytes := public.X.Bytes()
-	// TODO think about better way to fill address
-	//xBytes := public.X.Bytes()
-	//yBytes := public.Y.Bytes()
-	//publicBytes := append(xBytes, yBytes...)
-	address, err := strkey.Encode(strkey.VersionByteAccountID, publicBytes)
+	address, err := strkey.Encode(strkey.VersionBytePublicKey, publicBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +175,4 @@ func (kp *KeyPair) GetKeyImage() *curve2.Point {
 	}
 
 	return keyImage
-}
-
-func (kp *KeyPair) rawSeed() []byte {
-	return strkey.MustDecode(strkey.VersionByteSeed, kp.seed)
 }
