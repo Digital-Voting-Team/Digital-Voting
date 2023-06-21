@@ -10,6 +10,7 @@ import (
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/keys"
 	signature "github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/signatures/single_signature"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/repository"
+	"log"
 	"time"
 )
 
@@ -71,19 +72,24 @@ func (b *Block) GetHashString() string {
 }
 
 func (b *Block) Verify(indexedData *repository.IndexedData) bool {
-	merkleRoot := merkle_tree.GetMerkleRoot(b.Body.Transactions)
+	if merkle_tree.GetMerkleRoot(b.Body.Transactions) != b.Header.MerkleRoot {
+		log.Println("Merkle root verification failed")
+		return false
+	}
 
 	if !b.Witness.Verify(indexedData.AccountManager, b.GetHashString()) {
+		log.Println("Witness verification failed")
 		return false
 	}
 
 	for _, transaction := range b.Body.Transactions {
 		if !transaction.Verify(indexedData) {
+			log.Println("Transaction verification failed")
 			return false
 		}
 	}
 
-	return merkleRoot == b.Header.MerkleRoot
+	return true
 }
 
 // UnmarshallBlock unmarshalls the JSON representation of the Block into the Block itself

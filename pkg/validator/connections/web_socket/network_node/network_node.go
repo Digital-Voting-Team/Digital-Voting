@@ -5,13 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	blk "github.com/Digital-Voting-Team/Digital-Voting/pkg/blockchain/block"
+	"github.com/Digital-Voting-Team/Digital-Voting/pkg/blockchain/transaction/transaction_json"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/keys"
 	ss "github.com/Digital-Voting-Team/Digital-Voting/pkg/signature/signatures/single_signature"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator"
+	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/repository/indexed_votings"
 	"github.com/gorilla/websocket"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -28,19 +32,28 @@ const (
 	BlockDenial
 )
 
+func (mt MsgType) String() string {
+	switch mt {
+	case BlockValidation:
+		return "BlockValidation"
+	case BlockApproval:
+		return "BlockApproval"
+	case BlockDenial:
+		return "BlockDenial"
+	default:
+		return fmt.Sprintf("%d", int(mt))
+	}
+}
+
 type Message struct {
 	MessageType MsgType   `json:"message_type"`
-	Block       blk.Block `json:"blk"`
+	Block       blk.Block `json:"block"`
 }
 
 type NetworkNode struct {
-	upgrader             websocket.Upgrader
-	ValidatorToNetwork   <-chan *blk.Block
-	NetworkToValidator   chan<- *blk.Block
-	BlockApprovalChannel chan<- *blk.Block
-	BlockDenialChannel   chan<- *blk.Block
-	ResponseChannel      <-chan validator.ResponseMessage
-	ValidatorKeysChannel chan<- []keys.PublicKeyBytes
+	upgrader websocket.Upgrader
+
+	Channels validator.Communication
 
 	NodeList    []string
 	MyPublicKey keys.PublicKeyBytes
@@ -51,21 +64,14 @@ type NetworkNode struct {
 
 func NewNetworkNode(
 	hostname string,
-	valToNetChan <-chan *blk.Block,
-	netToValChan chan<- *blk.Block,
-	blockApprovalChan chan<- *blk.Block,
-	responseChan <-chan validator.ResponseMessage,
-	validatorKeysChan chan<- []keys.PublicKeyBytes,
 	validatorPublicKey keys.PublicKeyBytes,
+	channels validator.Communication,
 ) *NetworkNode {
 	nn := &NetworkNode{
-		ValidatorToNetwork:   valToNetChan,
-		NetworkToValidator:   netToValChan,
-		BlockApprovalChannel: blockApprovalChan,
-		ResponseChannel:      responseChan,
-		ValidatorKeysChannel: validatorKeysChan,
-		MyPublicKey:          validatorPublicKey,
-		upgrader:             websocket.Upgrader{},
+		Channels: channels,
+
+		MyPublicKey: validatorPublicKey,
+		upgrader:    websocket.Upgrader{},
 
 		hostname: hostname,
 	}
@@ -74,6 +80,8 @@ func NewNetworkNode(
 	http.HandleFunc("/block", nn.HandleWebSocketNewBlock)
 	http.HandleFunc("/update", nn.HandleWebSocketUpdateNodeList)
 	http.HandleFunc("/ping", nn.HandleWebSocketPing)
+	http.HandleFunc("/transaction", nn.HandleWebSocketNewTransaction)
+	http.HandleFunc("/get_votings", nn.HandleWebSocketGetVotings)
 
 	go func() {
 		for {
@@ -107,11 +115,12 @@ func (n *NetworkNode) registerInNodeConnector(nodeConnectorHostname string) erro
 	if err != nil {
 		return err
 	}
-	println("Sending request to repository connector")
+	log.Println("Sending request to node connector")
 	_, err = http.Post("http://"+nodeConnectorHostname+"/nodes", "application/json", bytes.NewBuffer(marshalled))
 	if err != nil {
 		return err
 	}
+	log.Println("Successfully registered in node connector")
 	return nil
 }
 
@@ -122,29 +131,29 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 		return
 	}
 
-	var messageMap map[string]any
+	messageMap := map[string]interface{}{}
 	err = json.Unmarshal(message, &messageMap)
 	if err != nil {
-		log.Println("json unmarshal:", err)
+		log.Println("json unmarshal here:", err)
 		return
 	}
 
 	receivedMessage := &Message{}
 	_ = json.Unmarshal(message, receivedMessage)
 
-	marshalledBlock, _ := json.Marshal(messageMap["blk"])
+	marshalledBlock, _ := json.Marshal(messageMap["block"])
 	receivedBlock, err := blk.UnmarshallBlock(marshalledBlock)
 	if err != nil {
-		log.Println("blk unmarshal:", err)
+		log.Println("block unmarshal:", err)
 		return
 	}
 
+	log.Printf("Received block with hash %s; MessageType: %s", receivedBlock.GetHashString(), receivedMessage.MessageType)
+
 	switch receivedMessage.MessageType {
 	case BlockValidation:
-		n.NetworkToValidator <- receivedBlock
-		responseMessage := <-n.ResponseChannel
-
-		//log.Println(responseMessage.VerificationSuccess)
+		n.Channels.NetworkToValidator <- receivedBlock
+		responseMessage := <-n.Channels.BlockResponse
 
 		err = conn.WriteJSON(responseMessage)
 		if err != nil {
@@ -152,7 +161,15 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 		}
 	case BlockApproval:
 		// TODO: consider denial and actions to restore correct state
-		n.BlockApprovalChannel <- receivedBlock
+		n.Channels.BlockApproval <- receivedBlock
+		result := <-n.Channels.ApprovalResponse
+
+		err = conn.WriteJSON(struct {
+			Approved bool `json:"approved"`
+		}{result})
+		if err != nil {
+			fmt.Println(err)
+		}
 	default:
 		log.Printf("unknown message type %d", receivedMessage.MessageType)
 		return
@@ -160,14 +177,8 @@ func (n *NetworkNode) ReadMessages(conn *websocket.Conn) {
 }
 
 func (n *NetworkNode) SendBlock(conn *websocket.Conn, message Message) {
-	jsonMessage, err := json.Marshal(message)
-	if err != nil {
-		log.Println("json marshal:", err)
-		return
-	}
-
 	// Send the JSON message
-	err = conn.WriteJSON(jsonMessage)
+	err := conn.WriteJSON(message)
 	if err != nil {
 		log.Println("write:", err)
 		return
@@ -178,13 +189,16 @@ func (n *NetworkNode) SendBlock(conn *websocket.Conn, message Message) {
 func (n *NetworkNode) SendBlockValidation() {
 	message := Message{
 		MessageType: BlockValidation,
-		Block:       *<-n.ValidatorToNetwork,
+		Block:       *<-n.Channels.ValidatorToNetwork,
 	}
 
-	// TODO: update repository list
+	log.Printf("Sending block with hash: %s", message.Block.GetHashString())
+
+	// TODO: update node list
 	n.Mutex.Lock()
 	for _, indexedData := range n.NodeList {
-		conn, err := n.Connect(indexedData, "8080")
+		address := strings.Split(indexedData, ":")
+		conn, err := n.Connect(address[0], address[1], "block")
 		if err != nil {
 			log.Println("connect:", err)
 			continue
@@ -206,10 +220,14 @@ func (n *NetworkNode) SendBlockValidation() {
 	}
 
 	// TODO: Consider the case when we didn't update NodeList cause of Mutex lock and added to blockchain
-	decision := (float32(len(message.Block.Witness.ValidatorsPublicKeys)) / float32(len(n.NodeList))) >= Threshold
+	desiredNumber := int(math.Floor(float64(len(n.NodeList)+1) * Threshold))
+	gotNumber := len(message.Block.Witness.ValidatorsPublicKeys)
+	decision := gotNumber >= desiredNumber
+	log.Printf("Need %d approvals; Got %d approvals; Decision: %v", desiredNumber, gotNumber, decision)
 	if decision {
 		for _, indexedData := range n.NodeList {
-			conn, err := n.Connect(indexedData, "8080")
+			address := strings.Split(indexedData, ":")
+			conn, err := n.Connect(address[0], address[1], "block")
 			if err != nil {
 				log.Println("connect:", err)
 				continue
@@ -218,14 +236,27 @@ func (n *NetworkNode) SendBlockValidation() {
 			message.MessageType = BlockApproval
 			n.SendBlock(conn, message)
 
+			_, responseMessage, err := conn.ReadMessage()
+			if err != nil {
+				log.Println("Error reading approval response:", err)
+			}
+			response := struct {
+				Approved bool `json:"approved"`
+			}{}
+			_ = json.Unmarshal(responseMessage, &response)
+			log.Printf("Block with hash %s; Approval response: %v", message.Block.GetHashString(), response)
+
 			err = conn.Close()
 			if err != nil {
 				log.Println("Error closing connection:", err)
 			}
 		}
-		n.BlockApprovalChannel <- &message.Block
+
+		n.Channels.BlockApproval <- &message.Block
+		result := <-n.Channels.ApprovalResponse
+		log.Printf("Block with hash %s; Approve result: %v", message.Block.GetHashString(), result)
 	} else {
-		n.BlockDenialChannel <- &message.Block
+		n.Channels.BlockDenial <- &message.Block
 	}
 	n.Mutex.Unlock()
 }
@@ -242,11 +273,11 @@ func (n *NetworkNode) WaitForResponse(conn *websocket.Conn) validator.ResponseMe
 	return responseMessage
 }
 
-func (n *NetworkNode) Connect(ip string, port string) (*websocket.Conn, error) {
+func (n *NetworkNode) Connect(ip string, port string, endpoint string) (*websocket.Conn, error) {
 	// IP address and port of the WebSocket server
 	//TODO check if ip not empty (consider how it will connect)
 
-	u := url.URL{Scheme: "ws", Host: ip + ":" + port, Path: "/ws"}
+	u := url.URL{Scheme: "ws", Host: ip + ":" + port, Path: endpoint}
 	log.Printf("connecting to %s", u.String())
 
 	// Establish a WebSocket connection
@@ -319,7 +350,7 @@ func (n *NetworkNode) UpdateNodeList(conn *websocket.Conn) {
 	}
 	n.Mutex.Unlock()
 
-	n.ValidatorKeysChannel <- publicKeys
+	n.Channels.ValidatorKeys <- publicKeys
 }
 
 func (n *NetworkNode) HandleWebSocketPing(w http.ResponseWriter, r *http.Request) {
@@ -333,7 +364,7 @@ func (n *NetworkNode) HandleWebSocketPing(w http.ResponseWriter, r *http.Request
 	conn.SetPingHandler(func(appData string) error {
 		//log.Println("Received ping")
 
-		err := conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(15*time.Second))
+		err = conn.WriteControl(websocket.PongMessage, []byte{}, time.Now().Add(15*time.Second))
 		if err != nil {
 			log.Println("Error sending pong:", err)
 		}
@@ -342,7 +373,7 @@ func (n *NetworkNode) HandleWebSocketPing(w http.ResponseWriter, r *http.Request
 	})
 
 	defer func(conn *websocket.Conn) {
-		err := conn.Close()
+		err = conn.Close()
 		//println("closing connection")
 		if err != nil {
 			log.Println("Error closing connection:", err)
@@ -352,6 +383,94 @@ func (n *NetworkNode) HandleWebSocketPing(w http.ResponseWriter, r *http.Request
 	_, _, err = conn.ReadMessage()
 	if err != nil {
 		//log.Println("Error reading message:", err)
+		return
+	}
+}
+
+func (n *NetworkNode) HandleWebSocketNewTransaction(w http.ResponseWriter, r *http.Request) {
+	conn, err := n.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("WebSocket upgrade failed:", err)
+		return
+	}
+	defer func(conn *websocket.Conn) {
+		err = conn.Close()
+		if err != nil {
+			log.Println("Error closing connection:", err)
+		}
+	}(conn)
+
+	n.addNewTransaction(conn)
+}
+
+func (n *NetworkNode) addNewTransaction(conn *websocket.Conn) {
+	_, message, err := conn.ReadMessage()
+	if err != nil {
+		log.Println("read in ReadMessages:", err)
+		return
+	}
+
+	newTxJson := &transaction_json.JSONTransaction{}
+	transaction, err := newTxJson.UnmarshallJSON(message)
+	if err != nil {
+		log.Println("Error reading transaction from UserAPI")
+		return
+	}
+
+	log.Printf("Received new transaction with hash: %s", transaction.GetHashString())
+	n.Channels.Transaction <- transaction
+	success := <-n.Channels.TxResponse
+	log.Printf("Transaction with hash %s; Verification status: %v", transaction.GetHashString(), success)
+
+	err = conn.WriteJSON(struct {
+		Response bool `json:"response"`
+	}{Response: success})
+	if err != nil {
+		log.Println("Error writing response")
+		return
+	}
+}
+
+func (n *NetworkNode) HandleWebSocketGetVotings(w http.ResponseWriter, r *http.Request) {
+	conn, err := n.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("WebSocket upgrade failed:", err)
+		return
+	}
+	defer func(conn *websocket.Conn) {
+		err = conn.Close()
+		if err != nil {
+			log.Println("Error closing connection:", err)
+		}
+	}(conn)
+
+	n.getVotings(conn)
+}
+
+func (n *NetworkNode) getVotings(conn *websocket.Conn) {
+	_, message, err := conn.ReadMessage()
+	if err != nil {
+		log.Println("read in getVotings:", err)
+		return
+	}
+
+	publicKeyStruct := &struct {
+		PublicKey keys.PublicKeyBytes `json:"public_key"`
+	}{}
+	err = json.Unmarshal(message, &publicKeyStruct)
+	if err != nil {
+		log.Println("Error unmarshalling getVotingsRequest")
+		return
+	}
+
+	n.Channels.PublicKey <- publicKeyStruct.PublicKey
+	votings := <-n.Channels.Votings
+
+	err = conn.WriteJSON(struct {
+		Votings []indexed_votings.VotingDTO `json:"votings"`
+	}{Votings: votings})
+	if err != nil {
+		log.Println("Error writing response")
 		return
 	}
 }

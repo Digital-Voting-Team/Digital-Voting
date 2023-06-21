@@ -11,9 +11,12 @@ import (
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/signer"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/repository"
 	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/repository/account_manager"
+	"github.com/Digital-Voting-Team/Digital-Voting/pkg/validator/repository/indexed_votings"
 	"log"
 	"time"
 )
+
+//var RegAdminPrivateKey = keys.PrivateKeyBytes{1}
 
 const MaxTransactionsInBlock = 5
 
@@ -26,51 +29,29 @@ type ResponseMessage struct {
 type Validator struct {
 	KeyPair     *keys.KeyPair
 	MemPool     *MemPool
-	Node        *repository.IndexedData
+	IndexedData *repository.IndexedData
 	BlockSigner *signer.BlockSigner
 	Blockchain  *blockchain.Blockchain
 
-	NetworkToValidator   <-chan *blk.Block
-	ValidatorToNetwork   chan<- *blk.Block
-	BlockApprovalChannel <-chan *blk.Block
-	BlockDenialChannel   <-chan *blk.Block
-	TransactionChannel   <-chan tx.ITransaction
-
-	TxResponseChannel    chan<- bool
-	BlockResponseChannel chan<- ResponseMessage
-
-	ValidatorKeysChannel <-chan []keys.PublicKeyBytes
+	Channels Communication
 }
 
 func NewValidator(
 	bc *blockchain.Blockchain,
-	netToValChan <-chan *blk.Block,
-	valToNetChan chan<- *blk.Block,
-	blockApprovalChan <-chan *blk.Block,
-	blockDenialChan <-chan *blk.Block,
-	transactionChan <-chan tx.ITransaction,
-	txResponseChan chan<- bool,
-	blockResponseChan chan<- ResponseMessage,
-	validatorKeysChan <-chan []keys.PublicKeyBytes,
+	channels Communication,
 ) *Validator {
 	validatorKeys, err := keys.Random(curve.NewCurve25519())
 	if err != nil {
 		log.Fatal(err)
 	}
 	v := &Validator{
-		KeyPair:              validatorKeys,
-		MemPool:              NewMemPool(),
-		Node:                 repository.NewIndexedData(),
-		BlockSigner:          signer.NewBlockSigner(),
-		Blockchain:           bc,
-		NetworkToValidator:   netToValChan,
-		ValidatorToNetwork:   valToNetChan,
-		BlockApprovalChannel: blockApprovalChan,
-		BlockDenialChannel:   blockDenialChan,
-		TransactionChannel:   transactionChan,
-		BlockResponseChannel: blockResponseChan,
-		TxResponseChannel:    txResponseChan,
-		ValidatorKeysChannel: validatorKeysChan,
+		KeyPair:     validatorKeys,
+		MemPool:     NewMemPool(),
+		IndexedData: repository.NewIndexedData(),
+		BlockSigner: signer.NewBlockSigner(),
+		Blockchain:  bc,
+
+		Channels: channels,
 	}
 
 	v.StartRoutines()
@@ -85,15 +66,16 @@ func (v *Validator) StartRoutines() {
 	go v.DenyBlock()
 	go v.UpdateValidatorKeys()
 	go v.AddNewTransaction()
+	go v.GetVotingsForPubKey()
 }
 
 // ValidateBlocks wait for blocks from channel and validate them
 func (v *Validator) ValidateBlocks() {
 	var response ResponseMessage
 	for {
-		newBlock := <-v.NetworkToValidator
+		newBlock := <-v.Channels.NetworkToValidator
 		if v.VerifyBlock(newBlock) {
-			log.Printf("Successfully verified block %s", newBlock.GetHashString())
+			log.Printf("Successfully verified block with hash %s", newBlock.GetHashString())
 			publicKey, signature := v.SignBlock(newBlock)
 			response = ResponseMessage{
 				VerificationSuccess: true,
@@ -105,21 +87,24 @@ func (v *Validator) ValidateBlocks() {
 				VerificationSuccess: false,
 			}
 		}
-		v.BlockResponseChannel <- response
+		v.Channels.BlockResponse <- response
 	}
 }
 
 // ApproveBlock wait for transactions from channel, approve and add them to blockchain
 func (v *Validator) ApproveBlock() {
 	for {
-		approvedBlock := <-v.BlockApprovalChannel
+		approvedBlock := <-v.Channels.BlockApproval
+		log.Printf("Block with hash %s received to approve", approvedBlock.GetHashString())
 		if v.VerifyBlock(approvedBlock) {
 			err := v.AddBlockToChain(approvedBlock)
-			v.ActualizeNodeData(approvedBlock)
 			if err != nil {
 				log.Fatalln(err)
 			}
-			log.Printf("Successfully added block %s", approvedBlock.GetHashString())
+			v.ActualizeNodeData(approvedBlock)
+			v.Channels.ApprovalResponse <- true
+		} else {
+			v.Channels.ApprovalResponse <- false
 		}
 	}
 }
@@ -127,46 +112,46 @@ func (v *Validator) ApproveBlock() {
 // DenyBlock wait for transactions from channel, restore transactions from it
 func (v *Validator) DenyBlock() {
 	for {
-		deniedBlock := <-v.BlockDenialChannel
+		deniedBlock := <-v.Channels.BlockDenial
 		v.RestoreMemPool(deniedBlock.Body.Transactions)
 	}
 }
 
 func (v *Validator) RestoreMemPool(transactions []tx.ITransaction) {
 	transactionsToRestore := transactions
-	v.Node.Mutex.Lock()
+	v.IndexedData.Mutex.Lock()
 	for _, transaction := range transactions {
-		if transaction.Verify(v.Node) {
+		if transaction.Verify(v.IndexedData) {
 			transactionsToRestore = append(transactionsToRestore, transaction)
 		}
 	}
-	v.Node.Mutex.Unlock()
+	v.IndexedData.Mutex.Unlock()
 	v.MemPool.RestoreMemPool(transactionsToRestore)
 }
 
 // TODO: get last block hash from blockchain
 func (v *Validator) CreateAndSendBlock() {
-	ticker := time.NewTicker(time.Hour * 1)
+	ticker := time.NewTicker(time.Second * 10)
 	for {
 		select {
 		case <-ticker.C:
 			hash := v.Blockchain.GetLastBlockHash()
 			if v.MemPool.GetTransactionsCount() > 0 {
-				v.ValidatorToNetwork <- v.CreateBlock(hash)
+				v.Channels.ValidatorToNetwork <- v.CreateBlock(hash)
 			}
 		default:
 			hash := v.Blockchain.GetLastBlockHash()
 			if v.MemPool.GetTransactionsCount() >= MaxTransactionsInBlock {
-				v.ValidatorToNetwork <- v.CreateBlock(hash)
+				v.Channels.ValidatorToNetwork <- v.CreateBlock(hash)
 			}
 		}
 	}
 }
 
 func (v *Validator) AddToMemPool(newTransaction tx.ITransaction) bool {
-	v.Node.Mutex.Lock()
-	response := newTransaction.CheckOnCreate(v.Node)
-	v.Node.Mutex.Unlock()
+	v.IndexedData.Mutex.Lock()
+	response := newTransaction.CheckOnCreate(v.IndexedData)
+	v.IndexedData.Mutex.Unlock()
 	if response {
 		response = v.MemPool.AddToMemPool(newTransaction)
 	}
@@ -209,10 +194,13 @@ func (v *Validator) SignBlock(block *blk.Block) (keys.PublicKeyBytes, ss.SingleS
 }
 
 func (v *Validator) VerifyBlock(block *blk.Block) bool {
-	prevHashValid := block.Header.Previous == v.Blockchain.GetLastBlockHash()
-	v.Node.Mutex.Lock()
-	defer v.Node.Mutex.Unlock()
-	return prevHashValid && block.Verify(v.Node)
+	if block.Header.Previous != v.Blockchain.GetLastBlockHash() || len(block.Body.Transactions) > MaxTransactionsInBlock {
+		return false
+	}
+
+	v.IndexedData.Mutex.Lock()
+	defer v.IndexedData.Mutex.Unlock()
+	return block.Verify(v.IndexedData)
 }
 
 func (v *Validator) AddBlockToChain(block *blk.Block) error {
@@ -224,31 +212,62 @@ type IndexedDataActualizer interface {
 }
 
 func (v *Validator) ActualizeNodeData(block *blk.Block) {
-	v.Node.Mutex.Lock()
-	defer v.Node.Mutex.Unlock()
+	v.IndexedData.Mutex.Lock()
+	defer v.IndexedData.Mutex.Unlock()
 	for _, transaction := range block.Body.Transactions {
 		txExact, ok := transaction.GetTxBody().(IndexedDataActualizer)
 		if ok {
-			txExact.ActualizeIndexedData(v.Node)
+			txExact.ActualizeIndexedData(v.IndexedData)
 		}
 	}
 }
 
 func (v *Validator) UpdateValidatorKeys() {
 	for {
-		newValidatorKeys := <-v.ValidatorKeysChannel
-		v.Node.Mutex.Lock()
-		v.Node.AccountManager.ValidatorPubKeys = map[keys.PublicKeyBytes]struct{}{}
+		newValidatorKeys := <-v.Channels.ValidatorKeys
+		v.IndexedData.Mutex.Lock()
+		v.IndexedData.AccountManager.ValidatorPubKeys = map[keys.PublicKeyBytes]struct{}{}
 		for _, key := range newValidatorKeys {
-			v.Node.AccountManager.AddPubKey(key, account_manager.Validator)
+			v.IndexedData.AccountManager.AddPubKey(key, account_manager.Validator)
 		}
-		v.Node.Mutex.Unlock()
+		v.IndexedData.Mutex.Unlock()
 	}
 }
 
 func (v *Validator) AddNewTransaction() {
 	for {
-		newTransaction := <-v.TransactionChannel
-		v.TxResponseChannel <- v.AddToMemPool(newTransaction)
+		newTransaction := <-v.Channels.Transaction
+		//if newTransaction.GetTxType() == tx.AccountCreation &&
+		//	(newTransaction.(*tx.Transaction).PublicKey == keys.PublicKeyBytes{}) {
+		//	signer.NewTransactionSigner().SignTransactionWithPrivateKey(RegAdminPrivateKey, newTransaction.(*tx.Transaction))
+		//}
+		v.Channels.TxResponse <- v.AddToMemPool(newTransaction)
+	}
+}
+
+func (v *Validator) GetVotingsForPubKey() {
+	for {
+		pubKey := <-v.Channels.PublicKey
+
+		result := []indexed_votings.VotingDTO{}
+
+		votings := v.IndexedData.VotingManager.IndexedVotings
+
+		for _, voting := range votings {
+			flag := false
+			whiteList := voting.Whitelist
+			for _, identifier := range whiteList {
+				if v.IndexedData.GroupManager.IsGroupMember(identifier, pubKey) || identifier == pubKey {
+					result = append(result, voting)
+					flag = true
+					break
+				}
+			}
+			if flag {
+				continue
+			}
+		}
+
+		v.Channels.Votings <- result
 	}
 }
