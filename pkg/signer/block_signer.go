@@ -19,8 +19,9 @@ func (bs *BlockSigner) SignBlock(keyPair *keys.KeyPair, block *blk.Block) (keys.
 	publicKey := keyPair.GetPublicKey()
 	messageToSign := block.GetHashString()
 
-	signature := bs.BlkSigner.Sign(messageToSign, privateKey)
-	return keys.PublicKeyBytes(publicKey.PointToBytes()), signature.SignatureToBytes()
+	edwardsSignature := bs.BlkSigner.SignEdDSA(messageToSign, privateKey, publicKey)
+	signature := bs.BlkSigner.EdwardsToSingleSignature(edwardsSignature)
+	return keys.PublicKeyBytes(publicKey.PointToBytes()), signature.EdwardsSignatureToBytes()
 }
 
 func (bs *BlockSigner) SignAndUpdateBlock(keyPair *keys.KeyPair, block *blk.Block) {

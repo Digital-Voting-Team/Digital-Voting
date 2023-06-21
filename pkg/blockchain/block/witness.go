@@ -34,7 +34,7 @@ func (w *Witness) Verify(accountManager *account_manager.AccountManager, message
 			return false
 		}
 
-		if !ss.NewECDSA().VerifyBytes(message, publicKey, w.ValidatorsSignatures[i]) {
+		if !ss.NewECDSA().VerifyEdDSABytes(message, publicKey, w.ValidatorsSignatures[i]) {
 			log.Println("Witness contains invalid signature")
 			return false
 		}
