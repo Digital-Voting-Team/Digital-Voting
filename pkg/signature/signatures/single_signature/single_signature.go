@@ -47,9 +47,23 @@ func (ss *SingleSignature) SignatureToBytes() SingleSignatureBytes {
 	return result
 }
 
+func (ss *SingleSignature) EdwardsSignatureToBytes() SingleSignatureBytes {
+	result := SingleSignatureBytes{}
+	ss.R.FillBytes(result[0:33])
+	ss.S.FillBytes(result[33:])
+
+	return result
+}
+
 func BytesToSignature(data SingleSignatureBytes) *SingleSignature {
 	//version := data[0]
 	rInt := new(big.Int).SetBytes(data[1:33])
+	sInt := new(big.Int).SetBytes(data[33:])
+	return &SingleSignature{R: rInt, S: sInt}
+}
+
+func BytesToEdwardsSignature(data SingleSignatureBytes) *SingleSignature {
+	rInt := new(big.Int).SetBytes(data[0:33])
 	sInt := new(big.Int).SetBytes(data[33:])
 	return &SingleSignature{R: rInt, S: sInt}
 }
@@ -183,6 +197,14 @@ func (ec *ECDSA) Verify(message string, publicKey *crv.Point, signature *SingleS
 	v := new(big.Int).Mod(pointX.X, ec.Curve.N)
 
 	return new(big.Int).Sub(v, signature.R).String() == "0"
+}
+
+func (ec *ECDSA) VerifyEdDSABytes(message string, publicKey keys.PublicKeyBytes, signature SingleSignatureBytes) bool {
+	pubKey := crv.BytesToPoint(crv.PointCompressed(publicKey), ec.Curve)
+	sig := BytesToEdwardsSignature(signature)
+	edSig := ec.SingleToEdwardsSignature(sig)
+
+	return ec.VerifyEdDSA(message, pubKey, edSig)
 }
 
 func (ec *ECDSA) VerifyEdDSA(message string, publicKey *crv.Point, signature *EdwardsSignature) bool {

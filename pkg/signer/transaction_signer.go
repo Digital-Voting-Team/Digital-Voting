@@ -21,10 +21,12 @@ func NewTransactionSigner() *TransactionSigner {
 
 func (ts *TransactionSigner) SignTransaction(keyPair *keys.KeyPair, transaction *tx.Transaction) {
 	privateKey := keyPair.GetPrivateKey()
+	publicKey := keyPair.GetPublicKey()
 	messageToSign := transaction.GetSignatureMessage()
 
-	signature := ts.TxSigner.Sign(messageToSign, privateKey)
-	transaction.Sign(keyPair.PublicToBytes(), signature.SignatureToBytes())
+	edwardsSignature := ts.TxSigner.SignEdDSA(messageToSign, privateKey, publicKey)
+	signature := ts.TxSigner.EdwardsToSingleSignature(edwardsSignature)
+	transaction.Sign(keyPair.PublicToBytes(), signature.EdwardsSignatureToBytes())
 }
 
 func (ts *TransactionSigner) SignTransactionAnonymous(keyPair *keys.KeyPair, publicKeys []*curve.Point, s int, transaction *ts.TxVoteAnonymous) {

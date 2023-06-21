@@ -209,7 +209,7 @@ func (n *NetworkNode) SendBlockValidation() {
 
 		// If verification is true, publickey exists and ss is correct
 		if responseMessage.VerificationSuccess &&
-			!ss.NewECDSA().VerifyBytes(message.Block.GetHashString(), responseMessage.PublicKey, responseMessage.Signature) {
+			!ss.NewECDSA().VerifyEdDSABytes(message.Block.GetHashString(), responseMessage.PublicKey, responseMessage.Signature) {
 			message.Block.Sign(responseMessage.PublicKey, responseMessage.Signature)
 		}
 
