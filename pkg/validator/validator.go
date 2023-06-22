@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-//var RegAdminPrivateKey = keys.PrivateKeyBytes{1}
+var RegAdminPrivateKey = keys.PrivateKeyBytes{1}
 
 const MaxTransactionsInBlock = 5
 
@@ -239,10 +239,10 @@ func (v *Validator) AddNewTransaction() {
 	for {
 		newTransaction := <-v.Channels.Transaction
 		// TODO: uncomment in case of demo without administrators
-		//if newTransaction.GetTxType() == tx.AccountCreation &&
-		//	(newTransaction.(*tx.Transaction).PublicKey == keys.PublicKeyBytes{}) {
-		//	signer.NewTransactionSigner().SignTransactionWithPrivateKey(RegAdminPrivateKey, newTransaction.(*tx.Transaction))
-		//}
+		if newTransaction.GetTxType() == tx.AccountCreation &&
+			(newTransaction.(*tx.Transaction).PublicKey == keys.PublicKeyBytes{}) {
+			signer.NewTransactionSigner().SignTransactionWithPrivateKey(RegAdminPrivateKey, newTransaction.(*tx.Transaction))
+		}
 		v.Channels.TxResponse <- v.AddToMemPool(newTransaction)
 	}
 }
